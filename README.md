@@ -1,2 +1,2 @@
-# Organizaci-n-Acrono
+# Organizacion-Acrono
 organización Ácrono Arquitectura
