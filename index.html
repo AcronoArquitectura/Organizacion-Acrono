@@ -1,0 +1,1383 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ácrono Arquitectura · Organización</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #f5f4f0; --surface: #ffffff; --border: #e0ddd5; --border-dark: #c8c4bc;
+    --text: #333333; --text-muted: #6b6a66; --text-faint: #a09e99; --accent: #333333;
+    --radius: 6px; --header-h: 56px; --row-h: 48px; --label-w: 200px; --cell-w: 28px;
+    font-family: 'Poppins', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  header {
+    height: var(--header-h); background: #333333; border-bottom: 1px solid #222;
+    display: flex; align-items: center; padding: 0 20px; gap: 12px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  header h1 {
+    font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+    flex: 1; color: #ffffff; font-family: 'Poppins', sans-serif;
+  }
+  .btn {
+    height: 30px; padding: 0 12px; border: 1px solid rgba(255,255,255,.25);
+    background: rgba(255,255,255,.08); border-radius: var(--radius);
+    font-size: 11px; cursor: pointer; color: #fff;
+    font-family: 'Poppins', sans-serif; transition: background .15s;
+    display: flex; align-items: center; gap: 5px; white-space: nowrap;
+  }
+  .btn:hover { background: rgba(255,255,255,.18); }
+  .btn.light {
+    background: #fff; color: #333; border-color: #ddd;
+  }
+  .btn.light:hover { background: #f0efe9; }
+  .btn.primary { background: #fff; color: #333333; border-color: #fff; font-weight: 600; }
+  .btn.primary:hover { background: #f0efe9; }
+  .btn.danger { color: #c0392b; border-color: #e0b0ab; background: transparent; }
+  .btn.danger:hover { background: #fdf0ee; }
+  .btn.dark { background: #333; color: #fff; border-color: #333; }
+  .btn.dark:hover { background: #444; }
+
+  /* inner panel buttons */
+  .panel .btn { border-color: var(--border-dark); background: var(--surface); color: var(--text); }
+  .panel .btn:hover { background: var(--bg); }
+  .panel .btn.primary { background: #333; color: #fff; border-color: #333; }
+  .panel .btn.primary:hover { background: #444; }
+
+  #db-status {
+    font-size: 10px; padding: 3px 10px; border-radius: 20px; border: 1px solid rgba(255,255,255,.2);
+    display: flex; align-items: center; gap: 5px; cursor: pointer; color: rgba(255,255,255,.6);
+  }
+  #db-status .dot { width: 7px; height: 7px; border-radius: 50%; background: #666; }
+  #db-status.connected .dot { background: #4caf50; }
+  #db-status.connected { color: #a8e6b0; border-color: rgba(76,175,80,.4); }
+
+  #subbar {
+    display: flex; align-items: center; gap: 10px; padding: 6px 20px;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    font-size: 11px; color: var(--text-muted);
+  }
+  #window-label { font-weight: 500; color: var(--text); }
+
+  main { display: flex; flex-direction: column; height: calc(100vh - var(--header-h) - 37px); overflow: hidden; }
+  #gantt-wrapper { flex: 1; overflow: auto; background: var(--bg); }
+  #gantt-container { min-width: max-content; padding: 12px 20px; }
+
+  .gantt-header {
+    display: flex; position: sticky; top: 0; z-index: 10;
+    background: var(--bg); padding-bottom: 2px;
+  }
+  .gantt-label-col { width: var(--label-w); min-width: var(--label-w); flex-shrink: 0; }
+  .months-row { display: flex; }
+  .month-group { display: flex; flex-direction: column; }
+  .month-label {
+    font-size: 9px; color: var(--text-muted); text-align: center; letter-spacing: .08em;
+    text-transform: uppercase; border-left: 1px solid var(--border); padding: 0 4px 2px;
+    font-weight: 600;
+  }
+  .weeks-row { display: flex; }
+  .week-label {
+    width: var(--cell-w); min-width: var(--cell-w); font-size: 8px; color: var(--text-faint);
+    text-align: center; line-height: 1; border-left: 1px solid var(--border-dark); padding-top: 2px;
+  }
+  .week-label.month-start { border-left: 2px solid var(--border-dark); }
+  .week-label.today-col { background: #fff3f3; color: #c0392b; font-weight: 600; }
+
+  .project-row {
+    display: flex; align-items: stretch; border-bottom: 1px solid var(--border);
+    min-height: var(--row-h); background: var(--surface); transition: background .1s;
+  }
+  .project-row:hover { background: #fafaf8; }
+  .project-label {
+    width: var(--label-w); min-width: var(--label-w); padding: 6px 10px;
+    display: flex; flex-direction: column; justify-content: center; gap: 2px;
+    border-right: 1px solid var(--border); cursor: pointer;
+    position: sticky; left: 0; background: inherit; z-index: 5;
+  }
+  .project-label:hover { background: #f0efe9; }
+  .proj-drag-handle {
+    position:absolute; left:0; top:0; bottom:0; width:14px;
+    display:flex; align-items:center; justify-content:center;
+    cursor:grab; color:var(--text-faint); font-size:11px;
+    opacity:0; transition:opacity .15s;
+  }
+  .project-row:hover .proj-drag-handle { opacity:1; }
+  .project-name { font-size: 11px; font-weight: 600; }
+  .project-code { font-size: 9px; color: var(--text-muted); font-family: monospace; }
+  .project-authors-tag { font-size: 9px; color: var(--text-faint); }
+
+  .project-bars { flex: 1; position: relative; }
+  .week-line { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--border); pointer-events: none; }
+  .week-line.month-start { background: var(--border-dark); }
+  .week-line.today-line { background: #e74c3c; width: 2px; opacity: .6; z-index: 2; }
+
+  .phase-bar {
+    position: absolute; cursor: pointer; transition: filter .15s;
+    top: 50%; transform: translateY(-50%);
+    display: flex; align-items: center;
+  }
+  .phase-bar:hover { filter: brightness(1.12); z-index: 10; }
+
+  /* ── OVERLAYS ── */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 200; display: flex; align-items: center; justify-content: center; }
+  .panel {
+    background: var(--surface); border-radius: 10px; width: 560px; max-height: 90vh;
+    overflow-y: auto; padding: 26px; box-shadow: 0 20px 60px rgba(0,0,0,.2);
+    font-family: 'Poppins', sans-serif;
+  }
+  .panel h2 { font-size: 15px; margin-bottom: 18px; font-weight: 600; }
+  .panel h3 { font-size: 10px; margin: 16px 0 6px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .07em; font-weight: 600; }
+  .panel .hint { font-size: 10px; color: var(--text-faint); margin-bottom: 8px; line-height: 1.5; }
+
+  .form-row { margin-bottom: 12px; }
+  .form-row label { display: block; font-size: 10px; color: var(--text-muted); margin-bottom: 3px; text-transform: uppercase; letter-spacing: .05em; }
+  .form-row input, .form-row select {
+    width: 100%; height: 34px; border: 1px solid var(--border-dark); border-radius: var(--radius);
+    padding: 0 10px; font-size: 12px; font-family: 'Poppins', sans-serif;
+    background: var(--surface); color: var(--text);
+  }
+  .form-row input:focus { outline: 2px solid #b8c0d0; outline-offset: 1px; }
+
+  .author-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .author-chip {
+    display: flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 20px;
+    font-size: 11px; cursor: pointer; border: 2px solid transparent; transition: all .12s;
+    font-family: 'Poppins', sans-serif; background: var(--bg);
+  }
+  .author-chip .chip-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .author-chip.selected { border-color: #333; font-weight: 600; }
+
+  .phases-editor { display: flex; flex-direction: column; gap: 4px; }
+  .phase-edit-row {
+    display: grid; grid-template-columns: 150px 50px 24px 1fr;
+    gap: 8px; align-items: center; padding: 5px 8px; background: var(--bg); border-radius: 5px;
+  }
+  .phase-edit-row .phase-name { font-size: 11px; font-weight: 500; }
+  .phase-edit-row input[type=number] {
+    height: 28px; text-align: center; border: 1px solid var(--border-dark);
+    border-radius: 4px; font-family: 'Poppins', sans-serif; font-size: 12px;
+    background: var(--surface); color: var(--text);
+  }
+  .phase-edit-row .sem-lbl { font-size: 9px; color: var(--text-muted); }
+  .phase-author-dots { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+  .author-dot {
+    width: 20px; height: 20px; border-radius: 50%; cursor: pointer;
+    border: 2px solid transparent; transition: border-color .12s, opacity .12s; flex-shrink: 0;
+  }
+  .author-dot.selected { border-color: #333; }
+  .author-dot.maxed { opacity: .2; cursor: not-allowed; }
+
+  .meeting-item { display: flex; gap: 6px; align-items: center; margin-bottom: 5px; }
+  .meeting-num { font-size: 10px; color: var(--text-muted); min-width: 22px; text-align: right; }
+  .btn-row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+
+  #legend {
+    display: flex; gap: 10px; flex-wrap: wrap; padding: 7px 20px;
+    border-bottom: 1px solid var(--border); background: var(--surface);
+    font-size: 10px; align-items: center;
+  }
+  .legend-title { color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; font-size: 9px; }
+  .legend-item { display: flex; align-items: center; gap: 4px; }
+  .legend-dot { width: 11px; height: 11px; border-radius: 50%; }
+
+  #toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: #333; color: #fff; padding: 9px 18px; border-radius: 20px;
+    font-size: 12px; z-index: 999; opacity: 0; transition: opacity .3s; pointer-events: none;
+    font-family: 'Poppins', sans-serif;
+  }
+  #toast.show { opacity: 1; }
+  #tooltip {
+    position: fixed; background: #333; color: #fff; padding: 6px 10px; border-radius: 5px;
+    font-size: 10px; pointer-events: none; z-index: 500; opacity: 0; transition: opacity .15s;
+    max-width: 240px; line-height: 1.5; white-space: pre; font-family: 'Poppins', sans-serif;
+  }
+  .empty-state { text-align: center; padding: 80px 20px; color: var(--text-muted); }
+  .empty-state h3 { font-size: 16px; margin-bottom: 8px; color: var(--text); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Ácrono Arquitectura · Organización</h1>
+  <div id="db-status" onclick="openDropboxSetup()">
+    <span class="dot"></span><span id="db-status-text">Conectar Dropbox</span>
+  </div>
+  <button class="btn" onclick="openAuthorManager()">Autores</button>
+  <button class="btn" onclick="extendView(26)">+ 6 meses →</button>
+  <button class="btn" onclick="resetStorage()" title="Borra datos locales y recarga desde Dropbox (o valores por defecto)">↺ Reset datos</button>
+  <button class="btn" id="btn-reset-view" style="display:none" onclick="resetView()">↺ Reset vista</button>
+  <button class="btn primary" onclick="openNewProject()">+ Proyecto</button>
+  <button class="btn" onclick="exportGeneralPDF()">↓ PDF general</button>
+</header>
+
+<div id="subbar">
+  <span id="window-label"></span>
+</div>
+<div id="legend"></div>
+
+<main>
+  <div id="gantt-wrapper">
+    <div id="gantt-container"></div>
+  </div>
+</main>
+
+<div id="tooltip"></div>
+<div id="toast"></div>
+
+<!-- DROPBOX -->
+<div id="overlay-dropbox" class="overlay" style="display:none">
+  <div class="panel" style="text-align:center; width:440px">
+    <h2>Conectar con Dropbox</h2>
+    <p style="font-size:12px; color:var(--text-muted); line-height:1.7; margin-bottom:20px">
+      Inicia sesión con tu cuenta de Dropbox.<br>
+      Solo los miembros de tu Dropbox podrán acceder a los datos.
+    </p>
+    <button class="btn dark" style="width:100%; justify-content:center; height:42px; font-size:13px; gap:10px" onclick="startDropboxOAuth()">
+      <svg width="18" height="18" viewBox="0 0 40 40"><path d="M20 5L10 12.5L20 20L10 27.5L20 35L30 27.5L20 20L30 12.5L20 5Z" fill="#fff"/></svg>
+      Iniciar sesión con Dropbox
+    </button>
+    <div id="dropbox-connected-info" style="display:none; margin-top:16px; padding:12px; background:var(--bg); border-radius:var(--radius); font-size:12px; color:var(--text-muted)">
+      <span id="dropbox-user-email"></span>
+    </div>
+    <div class="btn-row" style="justify-content:center; margin-top:16px">
+      <button class="btn light" onclick="closeOverlay('overlay-dropbox')">Cerrar</button>
+      <button class="btn danger" id="btn-dropbox-logout" style="display:none" onclick="logoutDropbox()">Desconectar</button>
+    </div>
+  </div>
+</div>
+
+<!-- AUTHORS -->
+<div id="overlay-authors" class="overlay" style="display:none">
+  <div class="panel" style="width:420px">
+    <h2>Autores</h2>
+    <div id="authors-list"></div>
+    <div style="display:flex; gap:8px; margin-top:14px; padding-top:14px; border-top:1px solid var(--border)">
+      <input type="text" id="new-author-name" placeholder="Nombre del autor"
+        style="flex:1; height:34px; border:1px solid var(--border-dark); border-radius:var(--radius); padding:0 10px; font-family:'Poppins',sans-serif; font-size:12px; color:var(--text)">
+      <input type="color" id="new-author-color" value="#4a90d9"
+        style="width:40px; height:34px; border:1px solid var(--border-dark); border-radius:var(--radius); cursor:pointer">
+      <button class="btn dark" onclick="addAuthor()">+ Añadir</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn dark" onclick="closeOverlay('overlay-authors')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROJECT -->
+<div id="overlay-project" class="overlay" style="display:none">
+  <div class="panel" style="width:660px">
+    <h2 id="project-panel-title">Nuevo proyecto</h2>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+      <div class="form-row"><label>Código</label><input type="text" id="p-code" placeholder="Vu.121" /></div>
+      <div class="form-row"><label>Nombre / descripción</label><input type="text" id="p-name" placeholder="Vivienda unifamiliar" /></div>
+      <div class="form-row"><label>Fecha inicio (lunes)</label><input type="date" id="p-start" onchange="onStartDateChange()" /></div>
+    </div>
+    <h3>Autor principal</h3>
+    <p class="hint">Color de identificación del proyecto. Se aplica a todas las fases salvo que especifiques otro por fase.</p>
+    <div class="author-chips" id="project-author-chips"></div>
+    <h3>Fases — semanas y autores</h3>
+    <p class="hint">Hasta 3 autores por fase: los círculos se dividen en franjas horizontales.</p>
+    <div class="phases-editor" id="phases-editor"></div>
+    <button class="btn light" style="margin-top:6px;color:var(--text);border-color:var(--border-dark)" onclick="addPhaseRow()">+ Fase</button>
+    <h3>Reuniones</h3>
+    <p class="hint">Semana relativa al inicio del proyecto (1 = primera semana).</p>
+    <div id="meetings-editor"></div>
+    <button class="btn light" style="margin-top:6px; color:var(--text); border-color:var(--border-dark)" onclick="addMeeting()">+ Reunión</button>
+    <div class="btn-row">
+      <button class="btn danger" id="btn-delete-project" style="display:none; margin-right:auto" onclick="deleteCurrentProject()">Eliminar</button>
+      <button class="btn light" onclick="closeOverlay('overlay-project')">Cancelar</button>
+      <button class="btn dark" onclick="saveProject()">Guardar</button>
+      <button class="btn light" id="btn-export-single" style="display:none; color:var(--text)" onclick="exportSinglePDF()">↓ PDF proyecto</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════
+const PHASE_DEFS = [
+  { key:'previos',       label:'Trabajos previos',      abbr:'TP', color:'#f0efed', defaultWeeks:3  },
+  { key:'anteproyecto',  label:'Anteproyecto',          abbr:'AN', color:'#d9a8a8', defaultWeeks:7  },
+  { key:'infografia',    label:'Infografía 3D',          abbr:'3D', color:'#f0b87a', defaultWeeks:5  },
+  { key:'premediciones', label:'Premediciones',          abbr:'PM', color:'#f5f0c8', defaultWeeks:2  },
+  { key:'ejecucion',     label:'Proyecto ejecución',    abbr:'PE', color:'#c8d48a', defaultWeeks:17 },
+  { key:'visado',        label:'Visado',                 abbr:'V',  color:'#b8c8d8', defaultWeeks:1  },
+];
+// Total default = 34 semanas
+
+const MONTH_NAMES = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+
+function getDefaultAuthors() {
+  return [
+    { id:'luis',          name:'Luis',           color:'#981f1f' },
+    { id:'marisol',       name:'Marisol',        color:'#acc03b' },
+    { id:'mariacristina', name:'María Cristina',  color:'#4fbf8e' },
+    { id:'sofia',         name:'Sofía',          color:'#e550fb' },
+    { id:'alvaro',        name:'Álvaro',         color:'#d3a73f' },
+  ];
+}
+
+// Default meetings: relative week number (1-based from project start)
+const DEFAULT_MEETING_TEMPLATE = [
+  { num:1, relWeek:5,  label:'1ª Reunión anteproyecto' },
+  { num:2, relWeek:7,  label:'2ª Reunión anteproyecto' },
+  { num:3, relWeek:9,  label:'3ª Reunión anteproyecto' },
+  { num:4, relWeek:10, label:'4ª Reunión anteproyecto' },
+  { num:5, relWeek:15, label:'Entrega infografía 3D' },
+  { num:6, relWeek:18, label:'Entrega premedición' },
+  { num:7, relWeek:22, label:'7ª Reunión proyecto' },
+];
+
+function getDefaultMeetings(startDateStr) {
+  const start = getMondayOfWeek(new Date(startDateStr));
+  return DEFAULT_MEETING_TEMPLATE.map(t => ({
+    num: t.num,
+    relWeek: t.relWeek,
+    label: t.label,
+    date: dateToInputValue(addWeeks(start, t.relWeek - 1)),
+  }));
+}
+
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+let state = {
+  dropbox: { token:'', path:'/cronograma_acrono.json' },
+  projects: [],
+  authors: null, // loaded from storage or default
+};
+let extraWeeks = 0;
+let editingProjectId = null;
+let panelProjectAuthorId = null;
+let panelPhaseAuthors = {};
+let meetingCounter = 0;
+
+// ═══════════════════════════════════════════════
+// PERSISTENCE
+// ═══════════════════════════════════════════════
+function saveLocal() { localStorage.setItem('acrono_v3', JSON.stringify(state)); }
+function loadLocal() {
+  try {
+    const s = JSON.parse(localStorage.getItem('acrono_v3') || 'null');
+    if (s) state = { ...state, ...s };
+  } catch(e) {}
+  if (!state.authors || !state.authors.length) state.authors = getDefaultAuthors();
+}
+
+// ═══════════════════════════════════════════════
+// DROPBOX
+// ═══════════════════════════════════════════════
+const DROPBOX_APP_KEY = '0zijvfkeso3m5lb';
+const DROPBOX_REDIRECT = 'https://acronoarquitectura.github.io/Organizacion-Acrono/';
+const DBX_PATH = '/cronograma_acrono.json';
+
+function openDropboxSetup() {
+  const logoutBtn = document.getElementById('btn-dropbox-logout');
+  const connInfo = document.getElementById('dropbox-connected-info');
+  if (state.dropbox.token) {
+    logoutBtn.style.display = 'inline-flex';
+    connInfo.style.display = 'block';
+    document.getElementById('dropbox-user-email').textContent = '✓ Conectado · ' + (state.dropbox.email || '');
+  } else {
+    logoutBtn.style.display = 'none';
+    connInfo.style.display = 'none';
+  }
+  document.getElementById('overlay-dropbox').style.display = 'flex';
+}
+
+function startDropboxOAuth() {
+  // Generate PKCE code verifier and challenge
+  const verifier = generateCodeVerifier();
+  sessionStorage.setItem('dbx_verifier', verifier);
+  generateCodeChallenge(verifier).then(challenge => {
+    const params = new URLSearchParams({
+      client_id: DROPBOX_APP_KEY,
+      redirect_uri: DROPBOX_REDIRECT,
+      response_type: 'code',
+      code_challenge: challenge,
+      code_challenge_method: 'S256',
+      token_access_type: 'offline',
+    });
+    window.location.href = 'https://www.dropbox.com/oauth2/authorize?' + params.toString();
+  });
+}
+
+function generateCodeVerifier() {
+  const arr = new Uint8Array(32);
+  crypto.getRandomValues(arr);
+  return btoa(String.fromCharCode(...arr)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+}
+
+async function generateCodeChallenge(verifier) {
+  const enc = new TextEncoder().encode(verifier);
+  const digest = await crypto.subtle.digest('SHA-256', enc);
+  return btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+}
+
+async function handleOAuthCallback() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  if (!code) return;
+  // Clean URL immediately
+  window.history.replaceState({}, document.title, window.location.pathname);
+  const verifier = sessionStorage.getItem('dbx_verifier');
+  if (!verifier) { toast('Error: sesión expirada, vuelve a intentarlo'); return; }
+  try {
+    const res = await fetch('https://api.dropbox.com/oauth2/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        grant_type: 'authorization_code',
+        client_id: DROPBOX_APP_KEY,
+        redirect_uri: DROPBOX_REDIRECT,
+        code_verifier: verifier,
+      })
+    });
+    const data = await res.json();
+    if (data.access_token) {
+      state.dropbox.token = data.access_token;
+      if (data.refresh_token) state.dropbox.refreshToken = data.refresh_token;
+      if (data.account_id) state.dropbox.accountId = data.account_id;
+      // Get user email
+      const meRes = await fetch('https://api.dropboxapi.com/2/users/get_current_account', {
+        method: 'POST', headers: { 'Authorization': 'Bearer ' + data.access_token }
+      });
+      const me = await meRes.json();
+      state.dropbox.email = me.email || '';
+      saveLocal();
+      setDbStatus(true);
+      toast('Dropbox conectado ✓ — ' + state.dropbox.email);
+      await syncFromDropbox();
+    } else {
+      toast('Error al conectar: ' + (data.error_description || data.error));
+    }
+  } catch(e) { toast('Error de conexión con Dropbox'); console.error(e); }
+}
+
+async function refreshDropboxToken() {
+  if (!state.dropbox.refreshToken) return false;
+  try {
+    const res = await fetch('https://api.dropbox.com/oauth2/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: state.dropbox.refreshToken,
+        client_id: DROPBOX_APP_KEY,
+      })
+    });
+    const data = await res.json();
+    if (data.access_token) {
+      state.dropbox.token = data.access_token;
+      saveLocal(); return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
+function logoutDropbox() {
+  if (!confirm('¿Desconectar Dropbox? Los datos locales se conservan.')) return;
+  state.dropbox.token = ''; state.dropbox.refreshToken = ''; state.dropbox.email = '';
+  saveLocal(); setDbStatus(false);
+  document.getElementById('btn-dropbox-logout').style.display = 'none';
+  document.getElementById('dropbox-connected-info').style.display = 'none';
+  toast('Dropbox desconectado');
+}
+
+async function saveDropboxConfig() {} // legacy no-op
+async function dbxFetch(url, opts, retry=true) {
+  const res = await fetch(url, { ...opts, headers: { ...opts.headers, 'Authorization': 'Bearer ' + state.dropbox.token }});
+  if (res.status === 401 && retry && state.dropbox.refreshToken) {
+    const ok = await refreshDropboxToken();
+    if (ok) return dbxFetch(url, opts, false);
+  }
+  return res;
+}
+
+async function syncFromDropbox() {
+  if (!state.dropbox.token) return;
+  try {
+    const res = await dbxFetch('https://content.dropboxapi.com/2/files/download', {
+      method:'POST',
+      headers:{ 'Dropbox-API-Arg':JSON.stringify({path:DBX_PATH}) }
+    });
+    if (res.ok) {
+      const r = await res.json();
+      if (r.projects) state.projects = r.projects;
+      if (r.authors)  state.authors  = r.authors;
+      setDbStatus(true); toast('Sincronizado con Dropbox ✓'); saveLocal(); render();
+    } else if (res.status === 409) { await pushToDropbox(); setDbStatus(true); }
+    else if (res.status === 401) { setDbStatus(false); toast('Sesión caducada, vuelve a conectar Dropbox'); }
+    else toast('Error Dropbox: ' + res.status);
+  } catch(e) { toast('No se pudo conectar con Dropbox'); }
+}
+async function pushToDropbox() {
+  if (!state.dropbox.token) return;
+  try {
+    await dbxFetch('https://content.dropboxapi.com/2/files/upload', {
+      method:'POST',
+      headers:{
+        'Dropbox-API-Arg':JSON.stringify({path:DBX_PATH, mode:'overwrite'}),
+        'Content-Type':'application/octet-stream',
+      },
+      body: JSON.stringify({ projects:state.projects, authors:state.authors })
+    });
+  } catch(e) {}
+}
+function setDbStatus(ok) {
+  document.getElementById('db-status').classList.toggle('connected', ok);
+  document.getElementById('db-status-text').textContent = ok ? 'Dropbox conectado' : 'Conectar Dropbox';
+}
+
+// ═══════════════════════════════════════════════
+// DATE UTILS
+// ═══════════════════════════════════════════════
+function getMondayOfWeek(d) {
+  d = new Date(d); const day = d.getDay();
+  d.setDate(d.getDate() + (day===0 ? -6 : 1-day)); d.setHours(0,0,0,0); return d;
+}
+function addWeeks(d, n) { d = new Date(d); d.setDate(d.getDate()+n*7); return d; }
+function weeksBetween(a, b) { return Math.round((new Date(b)-new Date(a))/(7*24*3600*1000)); }
+function formatDate(d) { return new Date(d).toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+function dateToInputValue(d) { return new Date(d).toISOString().slice(0,10); }
+function hexToRgb(h) { return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; }
+
+// ═══════════════════════════════════════════════
+// WINDOW / VIEW
+// ═══════════════════════════════════════════════
+function getWindowWeeks() {
+  const today = new Date();
+  const anchor = new Date(today.getFullYear(), today.getMonth()-1, 1);
+  const windowStart = getMondayOfWeek(anchor);
+  const windowEnd = addWeeks(windowStart, 53 + extraWeeks);
+  const weeks = [];
+  let d = new Date(windowStart);
+  while (d <= windowEnd) { weeks.push(new Date(d)); d = new Date(d); d.setDate(d.getDate()+7); }
+  return weeks;
+}
+
+function computeCellW(nWeeks) {
+  const labelW = 200, padding = 44;
+  const available = window.innerWidth - labelW - padding;
+  // fit 53 weeks into screen (default), allow smaller if extended
+  return Math.max(16, Math.min(30, Math.floor(available / Math.min(nWeeks, 53))));
+}
+
+function extendView(n) {
+  extraWeeks += n;
+  document.getElementById('btn-reset-view').style.display = 'inline-flex';
+  render();
+  setTimeout(() => { const w = document.getElementById('gantt-wrapper'); w.scrollLeft = w.scrollWidth; }, 60);
+}
+function resetView() {
+  extraWeeks = 0;
+  document.getElementById('btn-reset-view').style.display = 'none';
+  render();
+}
+function resetStorage() {
+  if (!confirm('¿Borrar datos locales y recargar? Los proyectos en Dropbox se recuperarán automáticamente.')) return;
+  localStorage.removeItem('acrono_v3');
+  location.reload();
+}
+
+// ═══════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════
+function render() { renderLegend(); renderGantt(); }
+
+function renderLegend() {
+  let h = '<span class="legend-title">Autores</span>';
+  state.authors.forEach(a => {
+    h += `<span class="legend-item"><span class="legend-dot" style="background:${a.color}"></span><span>${a.name}</span></span>`;
+  });
+  h += '<span style="flex:1"></span>';
+  // Build unique phase list from all projects + PHASE_DEFS defaults
+  const seenPhases = new Map();
+  // Insert standard phases in order, custom phases between premediciones and ejecucion
+  const stdKeys = PHASE_DEFS.map(p => p.key);
+  PHASE_DEFS.forEach(p => seenPhases.set(p.key, { abbr:p.abbr, label:p.label, color:p.color }));
+  // Collect custom phases (not in PHASE_DEFS)
+  const customPhases = new Map();
+  state.projects.forEach(proj => {
+    (proj.phases||[]).forEach(ph => {
+      if (!stdKeys.includes(ph.key) && !customPhases.has(ph.key)) {
+        customPhases.set(ph.key, { abbr:ph.abbr||ph.key.slice(0,2).toUpperCase(), label:ph.label||ph.key, color:ph.color||'#ccc' });
+      }
+    });
+  });
+  // Rebuild seenPhases with correct order: std phases with custom inserted after premediciones
+  seenPhases.clear();
+  PHASE_DEFS.forEach(p => {
+    seenPhases.set(p.key, { abbr:p.abbr, label:p.label, color:p.color });
+    if (p.key === 'premediciones') customPhases.forEach((v,k) => seenPhases.set(k, v));
+  });
+  h += '<span class="legend-title" style="margin-left:8px">Fases</span>';
+  seenPhases.forEach(p => {
+    const rgb = hexToRgb(p.color||'#888');
+    const bg = `rgb(${rgb[0]+(255-rgb[0])*.35|0},${rgb[1]+(255-rgb[1])*.35|0},${rgb[2]+(255-rgb[2])*.35|0})`;
+    h += `<span class="legend-item">
+      <span style="width:16px;height:16px;border-radius:50%;background:${bg};border:1.5px solid ${p.color};display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#333;font-family:'Poppins',sans-serif">${p.abbr}</span>
+      <span>${p.label}</span>
+    </span>`;
+  });
+  document.getElementById('legend').innerHTML = h;
+}
+
+function renderGantt() {
+  const container = document.getElementById('gantt-container');
+  const weeks = getWindowWeeks();
+  const cellW = computeCellW(weeks.length);
+  document.documentElement.style.setProperty('--cell-w', cellW+'px');
+
+  const today = getMondayOfWeek(new Date());
+  const todayIdx = weeks.findIndex(w => w.getTime()===today.getTime());
+
+  // Update subbar label
+  const fmtOpt = {month:'short', year:'numeric'};
+  document.getElementById('window-label').textContent =
+    `${weeks[0].toLocaleDateString('es-ES',fmtOpt)} → ${weeks[weeks.length-1].toLocaleDateString('es-ES',fmtOpt)}`;
+
+  // Month groups
+  const mGroups = []; let curM=-1, cg=null;
+  weeks.forEach((w,i) => {
+    const m = w.getMonth();
+    if (m!==curM) { cg={month:m, startIdx:i, count:0}; mGroups.push(cg); curM=m; }
+    cg.count++;
+  });
+
+  // Header
+  let html = `<div class="gantt-header"><div class="gantt-label-col"></div><div class="months-row">`;
+  mGroups.forEach(mg => {
+    html += `<div class="month-group">
+      <div class="month-label" style="width:${mg.count*cellW}px">${MONTH_NAMES[mg.month]}${mg.count*cellW>32?" '" + String(weeks[mg.startIdx].getFullYear()).slice(2):''}</div>
+      <div class="weeks-row">`;
+    for (let i=0; i<mg.count; i++) {
+      const w = weeks[mg.startIdx+i];
+      const isToday = (mg.startIdx+i) === todayIdx;
+      html += `<div class="week-label ${w.getDate()<=7?'month-start':''} ${isToday?'today-col':''}">${w.getDate()}</div>`;
+    }
+    html += `</div></div>`;
+  });
+  html += `</div></div>`;
+
+  // Projects
+  const projs = state.projects;
+  if (!projs.length) {
+    html += `<div class="empty-state" style="margin-left:var(--label-w)"><h3>Sin proyectos</h3><p>Pulsa "+ Proyecto" para añadir el primero.</p></div>`;
+    container.innerHTML = html; return;
+  }
+
+  projs.forEach(proj => {
+    const projAuthor = state.authors.find(a => a.id===proj.authorId);
+    const accentColor = projAuthor ? projAuthor.color : '#888';
+
+    // Grid lines
+    let gridHtml = weeks.map((w,i) => {
+      const isToday = i===todayIdx;
+      return `<div class="week-line ${w.getDate()<=7?'month-start':''} ${isToday?'today-line':''}" style="left:${i*cellW}px"></div>`;
+    }).join('');
+
+    // Phase bars — círculos con abreviatura
+    let barsHtml = '';
+    let cursor = new Date(proj.startDate);
+    const projStartMs = new Date(proj.startDate).getTime();
+
+    proj.phases.forEach(ph => {
+      if (!ph.weeks) return;
+      const phDef = PHASE_DEFS.find(d => d.key===ph.key);
+      const phStart = new Date(cursor);
+      const startPx = weeksBetween(weeks[0], phStart) * cellW;
+      const totalPx = Math.max(ph.weeks*cellW - 1, 2);
+      const barH = Math.min(cellW-2, 26);
+
+      const phAuthorIds = (ph.authorIds?.length) ? ph.authorIds : (proj.authorId ? [proj.authorId] : []);
+      const authorColors = phAuthorIds.map(id => state.authors.find(a=>a.id===id)?.color || '#888');
+      const abbr = (phDef ? phDef.abbr : null) || ph.abbr || ph.key.slice(0,2).toUpperCase();
+      const phEnd = addWeeks(cursor, ph.weeks);
+      const tipAuthors = phAuthorIds.map(id => state.authors.find(a=>a.id===id)?.name||id).join(', ');
+      const tip = `${phDef?phDef.label:(ph.label||ph.key)}: ${ph.weeks} sem\n${formatDate(phStart)} → ${formatDate(phEnd)}\n${tipAuthors}`;
+
+      // Clip to visible window — no scroll beyond calendar
+      const maxPx = weeks.length * cellW;
+      const clippedLeft = Math.max(startPx, 0);
+      const clippedRight = Math.min(startPx + totalPx, maxPx);
+      if (clippedRight <= 0 || clippedLeft >= maxPx) { cursor = addWeeks(cursor, ph.weeks); return; }
+      const clippedW = clippedRight - clippedLeft;
+      // offset inside the bar where the visible part starts
+      const innerOffset = clippedLeft - startPx;
+
+      // Solid bar with horizontal author stripes + single centred abbr circle
+      const nAuth = authorColors.length || 1;
+      const stripeH = barH / nAuth;
+      let stripesHtml = authorColors.map((ac, ai) =>
+        `<div style="position:absolute;left:0;right:0;top:${ai*stripeH}px;height:${stripeH}px;background:${ac};opacity:0.82"></div>`
+      ).join('');
+
+      const dotSize = Math.min(barH - 4, 20);
+      // Centre dot relative to the FULL bar width, shifted by innerOffset so it appears centred in the clipped view
+      const dotLeft = totalPx / 2 - dotSize / 2 - innerOffset;
+      const dotVisible = dotLeft >= 0 && dotLeft + dotSize <= clippedW;
+      const circleHtml = dotVisible ? `<div style="position:absolute;left:${dotLeft}px;top:50%;transform:translateY(-50%);
+        width:${dotSize}px;height:${dotSize}px;border-radius:50%;
+        background:rgba(0,0,0,0.32);display:flex;align-items:center;justify-content:center;
+        font-size:${dotSize<16?6:7}px;font-weight:700;color:#fff;font-family:'Poppins',sans-serif;
+        z-index:1;flex-shrink:0;">${abbr}</div>` : '';
+
+      barsHtml += `<div class="phase-bar" style="left:${clippedLeft}px;width:${clippedW}px;height:${barH}px;border-radius:4px;overflow:hidden;"
+        onmouseenter="showTip(event,'${tip.replace(/'/g,'&#39;').replace(/\n/g,'\\n')}')"
+        onmouseleave="hideTip()" onclick="openEditProject('${proj.id}')">${stripesHtml}${circleHtml}</div>`;
+
+      cursor = addWeeks(cursor, ph.weeks);
+    });
+
+    // Author name tags for label
+    const allIds = new Set();
+    proj.phases.forEach(ph => {
+      if (ph.authorIds?.length) ph.authorIds.forEach(id => allIds.add(id));
+      else if (proj.authorId) allIds.add(proj.authorId);
+    });
+    const authorTags = [...allIds].map(id => state.authors.find(a=>a.id===id)?.name?.split(' ')[0]||'').filter(Boolean).join(', ');
+
+    html += `<div class="project-row">
+      <div class="project-label" onclick="openEditProject('${proj.id}')" style="border-left:3px solid ${accentColor};position:relative;padding-left:18px">
+        <span class="proj-drag-handle" onmousedown="startProjDrag(event,'${proj.id}')" onclick="event.stopPropagation()">⠿</span>
+        <span class="project-code">${proj.code||''}</span>
+        <span class="project-name">${proj.name||''}</span>
+        <span class="project-authors-tag">${authorTags}</span>
+      </div>
+      <div class="project-bars" style="width:${weeks.length*cellW}px;height:var(--row-h)">
+        ${gridHtml}${barsHtml}
+      </div>
+    </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════
+// AUTHORS MANAGER
+// ═══════════════════════════════════════════════
+function openAuthorManager() {
+  renderAuthorsList();
+  document.getElementById('overlay-authors').style.display = 'flex';
+}
+function renderAuthorsList() {
+  document.getElementById('authors-list').innerHTML = state.authors.map(a => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <input type="color" value="${a.color}" onchange="updateAuthorField('${a.id}','color',this.value)"
+        style="width:32px;height:32px;border:1px solid var(--border-dark);border-radius:4px;cursor:pointer;flex-shrink:0">
+      <input type="text" value="${a.name}" onchange="updateAuthorField('${a.id}','name',this.value)"
+        style="flex:1;height:32px;border:1px solid var(--border-dark);border-radius:4px;padding:0 8px;font-size:12px;font-family:'Poppins',sans-serif;color:var(--text)">
+      <button class="btn danger" onclick="removeAuthor('${a.id}')" style="height:28px;padding:0 10px;font-size:11px;border-color:#e0b0ab;background:transparent">✕</button>
+    </div>
+  `).join('');
+}
+function updateAuthorField(id, field, value) {
+  const a = state.authors.find(a => a.id===id);
+  if (a) { a[field]=value; saveLocal(); pushToDropbox(); renderLegend(); render(); }
+}
+function addAuthor() {
+  const name = document.getElementById('new-author-name').value.trim();
+  const color = document.getElementById('new-author-color').value;
+  if (!name) return;
+  state.authors.push({ id:'a'+Date.now(), name, color });
+  document.getElementById('new-author-name').value = '';
+  saveLocal(); pushToDropbox(); renderAuthorsList(); renderLegend();
+}
+function removeAuthor(id) {
+  if (state.authors.length<=1) { toast('Debe haber al menos un autor'); return; }
+  if (!confirm('¿Eliminar este autor?')) return;
+  state.authors = state.authors.filter(a => a.id!==id);
+  saveLocal(); pushToDropbox(); renderAuthorsList(); renderLegend(); render();
+}
+
+// ═══════════════════════════════════════════════
+// PROJECT PANEL
+// ═══════════════════════════════════════════════
+function openNewProject() {
+  editingProjectId=null; panelProjectAuthorId=null; panelPhaseAuthors={};
+  document.getElementById('project-panel-title').textContent = 'Nuevo proyecto';
+  document.getElementById('btn-delete-project').style.display = 'none';
+  document.getElementById('btn-export-single').style.display = 'none';
+  document.getElementById('p-code').value = '';
+  document.getElementById('p-name').value = '';
+  const todayMonday = dateToInputValue(getMondayOfWeek(new Date()));
+  document.getElementById('p-start').value = todayMonday;
+  renderProjectAuthorChips();
+  buildPhasesEditor(null);
+  buildMeetingsEditor(getDefaultMeetings(todayMonday));
+  document.getElementById('overlay-project').style.display = 'flex';
+}
+
+function onStartDateChange() {
+  if (!editingProjectId) {
+    // Recalculate meeting dates when start changes on new project
+    buildMeetingsEditor(getDefaultMeetings(document.getElementById('p-start').value));
+  }
+}
+
+function openEditProject(id) {
+  const proj = state.projects.find(p => p.id===id);
+  if (!proj) return;
+  editingProjectId=id; panelProjectAuthorId=proj.authorId||null;
+  panelPhaseAuthors={};
+  proj.phases.forEach(ph => { panelPhaseAuthors[ph.key]=[...(ph.authorIds||[])]; });
+  document.getElementById('project-panel-title').textContent = 'Editar proyecto';
+  document.getElementById('btn-delete-project').style.display = 'inline-flex';
+  document.getElementById('btn-export-single').style.display = 'inline-flex';
+  document.getElementById('p-code').value = proj.code||'';
+  document.getElementById('p-name').value = proj.name||'';
+  document.getElementById('p-start').value = dateToInputValue(new Date(proj.startDate));
+  renderProjectAuthorChips();
+  buildPhasesEditor(proj.phases);
+  buildMeetingsEditor(proj.meetings||[]);
+  document.getElementById('overlay-project').style.display = 'flex';
+}
+
+function renderProjectAuthorChips() {
+  document.getElementById('project-author-chips').innerHTML = state.authors.map(a => {
+    const sel = panelProjectAuthorId===a.id;
+    return `<button type="button" class="author-chip ${sel?'selected':''}"
+      style="background:${sel ? a.color+'22' : 'var(--bg)'}"
+      onclick="selectProjectAuthor('${a.id}')">
+      <span class="chip-dot" style="background:${a.color}"></span>${a.name}
+    </button>`;
+  }).join('');
+}
+function selectProjectAuthor(id) {
+  panelProjectAuthorId = panelProjectAuthorId===id ? null : id;
+  renderProjectAuthorChips();
+}
+
+function buildPhasesEditor(existingPhases) {
+  const el = document.getElementById('phases-editor');
+  el.innerHTML = '';
+  panelPhaseAuthors = {};
+  const phases = existingPhases
+    ? existingPhases.map(ph => {
+        const def = PHASE_DEFS.find(d => d.key===ph.key)||{};
+        return { key:ph.key, label:ph.label||def.label||ph.key, abbr:ph.abbr||def.abbr||ph.key.slice(0,2).toUpperCase(), color:ph.color||def.color||'#ccc', weeks:ph.weeks??def.defaultWeeks??1, authorIds:ph.authorIds||[] };
+      })
+    : PHASE_DEFS.map(d => ({ key:d.key, label:d.label, abbr:d.abbr, color:d.color, weeks:d.defaultWeeks, authorIds:[] }));
+  phases.forEach(ph => {
+    panelPhaseAuthors[ph.key] = [...(ph.authorIds||[])];
+    el.appendChild(buildPhaseRow(ph));
+  });
+  initPhaseDrag();
+}
+
+function buildPhaseRow(ph) {
+  const row = document.createElement('div');
+  row.className = 'phase-edit-row';
+  row.dataset.key = ph.key;
+  row.style.cssText = 'grid-template-columns:14px 1fr 50px 20px 28px 1fr 22px; gap:6px;';
+  row.innerHTML = `
+    <span class="drag-handle" style="cursor:grab;color:var(--text-faint);font-size:13px;line-height:1.8;user-select:none">⠿</span>
+    <input type="text" value="${ph.label}" class="ph-label-input"
+      style="height:28px;border:1px solid var(--border-dark);border-radius:4px;padding:0 6px;font-size:11px;font-family:'Poppins',sans-serif;color:var(--text);background:var(--surface)">
+    <input type="number" min="0" max="99" value="${ph.weeks}" id="ph-weeks-${ph.key}"
+      style="height:28px;text-align:center;border:1px solid var(--border-dark);border-radius:4px;font-family:'Poppins',sans-serif;font-size:12px;background:var(--surface);color:var(--text)">
+    <span class="sem-lbl">sem</span>
+    <input type="color" value="${ph.color}" class="ph-color-input"
+      style="width:28px;height:28px;border:1px solid var(--border-dark);border-radius:4px;cursor:pointer;padding:1px">
+    <div class="phase-author-dots" id="ph-dots-${ph.key}" style="display:flex;gap:4px;flex-wrap:wrap;align-items:center"></div>
+    <button onclick="removePhaseRow(this)" title="Eliminar fase"
+      style="width:22px;height:22px;border:none;background:none;cursor:pointer;color:var(--text-faint);font-size:14px;padding:0;line-height:1">✕</button>
+  `;
+  renderPhaseDots(ph.key, row);
+  return row;
+}
+
+function removePhaseRow(btn) { btn.closest('.phase-edit-row').remove(); }
+
+function addPhaseRow() {
+  const key = 'ph_' + Date.now();
+  const ph = { key, label:'Nueva fase', abbr:'NF', color:'#d0d0d0', weeks:2, authorIds:[] };
+  // abbr auto-updated when user types label
+  setTimeout(() => {
+    const row = document.querySelector(`[data-key="${key}"]`);
+    if (!row) return;
+    const inp = row.querySelector('.ph-label-input');
+    inp.addEventListener('input', function() {
+      const words = this.value.trim().split(/\s+/);
+      const auto = words.map(w=>w[0]||'').join('').toUpperCase().slice(0,3);
+      row.dataset.abbr = auto;
+    });
+  }, 50);
+  panelPhaseAuthors[key] = [];
+  const el = document.getElementById('phases-editor');
+  el.appendChild(buildPhaseRow(ph));
+  renderPhaseDots(key, el.lastElementChild);
+  initPhaseDrag();
+}
+
+function renderPhaseDots(phaseKey, rowEl) {
+  const el = rowEl ? rowEl.querySelector(`#ph-dots-${phaseKey}`) : document.getElementById(`ph-dots-${phaseKey}`);
+  if (!el) return;
+  const sel = panelPhaseAuthors[phaseKey]||[];
+  el.innerHTML = state.authors.map(a => {
+    const isSel = sel.includes(a.id);
+    const isMaxed = !isSel && sel.length>=3;
+    return `<div class="author-dot ${isSel?'selected':''} ${isMaxed?'maxed':''}"
+      style="background:${a.color}" title="${a.name}"
+      onclick="togglePhaseDot('${phaseKey}','${a.id}')"></div>`;
+  }).join('');
+}
+
+function togglePhaseDot(phaseKey, authorId) {
+  const arr = panelPhaseAuthors[phaseKey]||[];
+  const idx = arr.indexOf(authorId);
+  if (idx>=0) arr.splice(idx,1);
+  else { if (arr.length>=3) return; arr.push(authorId); }
+  panelPhaseAuthors[phaseKey]=arr;
+  renderPhaseDots(phaseKey);
+}
+
+function initPhaseDrag() {
+  const el = document.getElementById('phases-editor');
+  let dragging = null, placeholder = null;
+  el.querySelectorAll('.drag-handle').forEach(handle => {
+    handle.addEventListener('mousedown', e => {
+      e.preventDefault();
+      dragging = handle.closest('.phase-edit-row');
+      dragging.style.opacity = '0.4';
+      placeholder = document.createElement('div');
+      placeholder.style.cssText = `height:${dragging.offsetHeight}px;background:var(--border);border-radius:5px;margin-bottom:4px`;
+      dragging.after(placeholder);
+    });
+  });
+  el.addEventListener('mouseover', e => {
+    if (!dragging) return;
+    const target = e.target.closest('.phase-edit-row');
+    if (target && target !== dragging) {
+      const rect = target.getBoundingClientRect();
+      const mid = rect.top + rect.height/2;
+      if (e.clientY < mid) el.insertBefore(placeholder, target);
+      else el.insertBefore(placeholder, target.nextSibling);
+    }
+  });
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    placeholder?.replaceWith(dragging);
+    dragging.style.opacity = '1';
+    dragging = null; placeholder = null;
+  });
+}
+
+function collectPhases() {
+  const phases = [];
+  document.querySelectorAll('#phases-editor .phase-edit-row').forEach(row => {
+    const key = row.dataset.key;
+    const def = PHASE_DEFS.find(d => d.key===key)||{};
+    phases.push({
+      key,
+      label: row.querySelector('.ph-label-input').value.trim() || key,
+      abbr: def.abbr || row.dataset.abbr || row.querySelector('.ph-label-input').value.trim().split(/\s+/).map(w=>w[0]||'').join('').toUpperCase().slice(0,3) || key.slice(0,2).toUpperCase(),
+      color: row.querySelector('.ph-color-input').value,
+      weeks: parseInt(row.querySelector('input[type=number]').value)||0,
+      authorIds: [...(panelPhaseAuthors[key]||[])],
+    });
+  });
+  return phases;
+}
+
+// Meetings
+function buildMeetingsEditor(meetings) {
+  document.getElementById('meetings-editor').innerHTML='';
+  meetingCounter=0;
+  const sorted = [...meetings].sort((a,b)=>(a.relWeek||0)-(b.relWeek||0));
+  sorted.forEach(m => addMeetingRow(m));
+}
+function addMeeting() { addMeetingRow(null); }
+function addMeetingRow(meeting) {
+  meetingCounter++;
+  const el = document.getElementById('meetings-editor');
+  const div = document.createElement('div');
+  div.className = 'meeting-item';
+  div.innerHTML = `
+    <span class="meeting-num">${meetingCounter}ª</span>
+    <input type="number" min="1" max="200" value="${meeting?.relWeek ?? meetingCounter*3}"
+      placeholder="sem" title="Semana relativa al inicio"
+      style="width:52px;height:30px;border:1px solid var(--border-dark);border-radius:4px;padding:0 6px;font-size:11px;font-family:'Poppins',sans-serif;text-align:center;color:var(--text)"
+      onchange="sortMeetingsByWeek()">
+    <span style="font-size:10px;color:var(--text-faint)">sem</span>
+    <input type="text" value="${meeting?.label||''}" placeholder="Descripción"
+      style="flex:1;height:30px;border:1px solid var(--border-dark);border-radius:4px;padding:0 8px;font-size:11px;font-family:'Poppins',sans-serif;color:var(--text)">
+    <button onclick="moveMeetingRow(this,-1)" title="Subir"
+      style="width:24px;height:26px;border:1px solid var(--border-dark);background:var(--bg);border-radius:4px;cursor:pointer;font-size:11px;padding:0;color:var(--text-muted)">↑</button>
+    <button onclick="moveMeetingRow(this,1)" title="Bajar"
+      style="width:24px;height:26px;border:1px solid var(--border-dark);background:var(--bg);border-radius:4px;cursor:pointer;font-size:11px;padding:0;color:var(--text-muted)">↓</button>
+    <button onclick="this.parentNode.remove();renumberMeetings()" style="width:24px;height:26px;border:1px solid #e0b0ab;background:transparent;border-radius:4px;cursor:pointer;font-size:12px;padding:0;color:#c0392b">✕</button>
+  `;
+  el.appendChild(div);
+}
+function moveMeetingRow(btn, dir) {
+  const row = btn.closest('.meeting-item');
+  const parent = row.parentNode;
+  if (dir===-1 && row.previousElementSibling) parent.insertBefore(row, row.previousElementSibling);
+  else if (dir===1 && row.nextElementSibling) parent.insertBefore(row.nextElementSibling, row);
+  renumberMeetings();
+}
+function renumberMeetings() {
+  document.querySelectorAll('#meetings-editor .meeting-item').forEach((row,i) => {
+    row.querySelector('.meeting-num').textContent = (i+1)+'ª';
+  });
+  meetingCounter = document.querySelectorAll('#meetings-editor .meeting-item').length;
+}
+function sortMeetingsByWeek() {
+  const el = document.getElementById('meetings-editor');
+  const rows = [...el.querySelectorAll('.meeting-item')];
+  rows.sort((a,b) => {
+    const aw = parseInt(a.querySelectorAll('input')[0].value)||0;
+    const bw = parseInt(b.querySelectorAll('input')[0].value)||0;
+    return aw - bw;
+  });
+  rows.forEach(r => el.appendChild(r));
+  renumberMeetings();
+}
+function collectMeetings() {
+  const ms=[]; let n=1;
+  document.querySelectorAll('#meetings-editor .meeting-item').forEach(item => {
+    const relEl = item.querySelectorAll('input')[0];
+    const lblEl = item.querySelectorAll('input')[1];
+    const relWeek = parseInt(relEl?.value)||n;
+    if (relEl?.value) {
+      const startStr = document.getElementById('p-start').value;
+      const startDate = getMondayOfWeek(new Date(startStr));
+      ms.push({ num:n++, relWeek, label:lblEl?.value||'', date:dateToInputValue(addWeeks(startDate, relWeek-1)) });
+    }
+  });
+  return ms;
+}
+
+function saveProject() {
+  const code = document.getElementById('p-code').value.trim();
+  const name = document.getElementById('p-name').value.trim();
+  const startRaw = document.getElementById('p-start').value;
+  if (!startRaw) { toast('Introduce una fecha de inicio'); return; }
+
+  const phases = collectPhases();
+
+  const proj = {
+    id: editingProjectId||('p'+Date.now()),
+    code, name,
+    startDate: getMondayOfWeek(new Date(startRaw)).toISOString(),
+    authorId: panelProjectAuthorId,
+    phases,
+    meetings: collectMeetings(),
+  };
+
+  if (editingProjectId) state.projects[state.projects.findIndex(p=>p.id===editingProjectId)] = proj;
+  else state.projects.push(proj);
+
+  saveLocal(); pushToDropbox(); closeOverlay('overlay-project'); render(); toast('Proyecto guardado ✓');
+}
+function deleteCurrentProject() {
+  if (!editingProjectId||!confirm('¿Eliminar este proyecto?')) return;
+  state.projects = state.projects.filter(p=>p.id!==editingProjectId);
+  saveLocal(); pushToDropbox(); closeOverlay('overlay-project'); render(); toast('Proyecto eliminado');
+}
+
+// ═══════════════════════════════════════════════
+// TOOLTIP / TOAST / OVERLAY
+// ═══════════════════════════════════════════════
+function showTip(e, text) {
+  const tip = document.getElementById('tooltip');
+  tip.textContent = text.replace(/&#39;/g,"'").replace(/\\n/g,'\n');
+  tip.style.cssText += `;left:${e.clientX+12}px;top:${e.clientY-10}px;opacity:1`;
+}
+function hideTip() { document.getElementById('tooltip').style.opacity='0'; }
+let toastTimer;
+function toast(msg) {
+  const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),2500);
+}
+function closeOverlay(id) { document.getElementById(id).style.display='none'; }
+document.querySelectorAll('.overlay').forEach(ov=>ov.addEventListener('click',e=>{if(e.target===ov)ov.style.display='none';}));
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.overlay').forEach(o=>o.style.display='none');});
+window.addEventListener('resize', ()=>render());
+
+// ═══════════════════════════════════════════════
+// PDF GENERAL (A3 landscape)
+// ═══════════════════════════════════════════════
+function exportGeneralPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a3' });
+  const pageW=doc.internal.pageSize.getWidth(), pageH=doc.internal.pageSize.getHeight();
+  const weeks = getWindowWeeks();
+  const mL=8, mT=16, labelW=45;
+  const mR=10;
+  const availW=pageW-mL-labelW-mR;
+  const cellW=availW/Math.min(weeks.length, 53);
+  const rowH=9;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(51,51,51);
+  doc.text('ÁCRONO ARQUITECTURA · ORGANIZACIÓN', mL, 10);
+  doc.setFontSize(7); doc.setFont('helvetica','normal'); doc.setTextColor(120);
+  doc.text(`Generado: ${formatDate(new Date())}`, pageW-60, 10);
+
+  // Month headers
+  const mGroups=[]; let curM=-1;
+  weeks.forEach((w,i)=>{
+    const m=w.getMonth();
+    if(m!==curM){mGroups.push({month:m,x:mL+labelW+i*cellW,count:0});curM=m;}
+    mGroups[mGroups.length-1].count++;
+  });
+  doc.setFontSize(7); doc.setFont('helvetica','bold');
+  mGroups.forEach(mg=>{
+    const mw=mg.count*cellW;
+    doc.setFillColor(230,228,220); doc.rect(mg.x,mT,mw,5,'F');
+    doc.setDrawColor(200); doc.rect(mg.x,mT,mw,5,'D');
+    doc.setTextColor(60); doc.text(MONTH_NAMES[mg.month],mg.x+mw/2,mT+3.5,{align:'center'});
+  });
+  doc.setFont('helvetica','normal'); doc.setFontSize(5);
+  weeks.forEach((w,i)=>{
+    const x=mL+labelW+i*cellW;
+    doc.setDrawColor(210); doc.line(x,mT+5,x,pageH-10);
+    doc.setTextColor(150); doc.text(String(w.getDate()),x+cellW/2,mT+8.5,{align:'center'});
+  });
+  // Today line
+  const today=getMondayOfWeek(new Date());
+  const todayIdx=weeks.findIndex(w=>w.getTime()===today.getTime());
+  if(todayIdx>=0){
+    const tx=mL+labelW+todayIdx*cellW;
+    doc.setDrawColor(220,50,50); doc.setLineWidth(0.5); doc.line(tx,mT,tx,pageH-10); doc.setLineWidth(0.2);
+  }
+
+  let y=mT+12;
+  state.projects.forEach(proj=>{
+    const pa=state.authors.find(a=>a.id===proj.authorId);
+    const aRgb=pa?hexToRgb(pa.color):[80,80,80];
+    doc.setFillColor(248,247,244); doc.rect(mL,y,labelW,rowH,'F');
+    doc.setDrawColor(200); doc.rect(mL,y,labelW,rowH,'D');
+    doc.setFillColor(...aRgb); doc.rect(mL,y,1.5,rowH,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(40);
+    doc.text(proj.code||'',mL+3,y+3.5);
+    doc.setFont('helvetica','normal'); doc.setFontSize(6); doc.setTextColor(80);
+    doc.text((proj.name||'').slice(0,24),mL+3,y+7);
+
+    let cur=new Date(proj.startDate);
+    proj.phases.forEach(ph=>{
+      if(!ph.weeks) return;
+      const phDef=PHASE_DEFS.find(d=>d.key===ph.key);
+      const si=weeksBetween(weeks[0],cur);
+      const bx=mL+labelW+si*cellW, bw=ph.weeks*cellW-0.5;
+      if(bw<=0){cur=addWeeks(cur,ph.weeks);return;}
+      const ids=(ph.authorIds?.length)?ph.authorIds:(proj.authorId?[proj.authorId]:[]);
+      const authorColors=ids.map(id=>state.authors.find(a=>a.id===id)?.color||'#888');
+      const abbr=(phDef?phDef.abbr:null)||ph.abbr||ph.key.slice(0,2).toUpperCase();
+      const nSegs=authorColors.length||1;
+      const segH=(rowH-3)/nSegs;
+      authorColors.forEach((ac,ai)=>{
+        doc.setFillColor(...hexToRgb(ac));
+        doc.rect(bx,y+1.5+ai*segH,bw,segH,'F');
+      });
+      // abbr always visible, white text centred on bar
+      if(bw>6){
+        doc.setFont('helvetica','bold'); doc.setFontSize(5.5); doc.setTextColor(255,255,255);
+        doc.text(abbr, bx+bw/2, y+rowH/2+1, {align:'center'});
+      }
+      cur=addWeeks(cur,ph.weeks);
+    });
+    y+=rowH+1;
+    if(y>pageH-16){doc.addPage();y=mT;}
+  });
+
+  // Footer
+  let lx=mL;
+  state.authors.forEach(a=>{
+    doc.setFillColor(...hexToRgb(a.color)); doc.circle(lx+2,pageH-5.5,2,'F');
+    doc.setTextColor(60); doc.setFont('helvetica','normal'); doc.setFontSize(6);
+    doc.text(a.name,lx+5,pageH-5); lx+=5+doc.getTextWidth(a.name)+6;
+  });
+  doc.save(`Cronograma_Acrono_${new Date().getFullYear()}.pdf`);
+  toast('PDF general exportado ✓');
+}
+
+// ═══════════════════════════════════════════════
+// PDF PROYECTO INDIVIDUAL — formato calendario estilo Excel
+// ═══════════════════════════════════════════════
+function exportSinglePDF() {
+  const proj = state.projects.find(p=>p.id===editingProjectId);
+  if (!proj) return;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
+  const pageW=doc.internal.pageSize.getWidth(), pageH=doc.internal.pageSize.getHeight();
+  const totalWeeks = proj.phases.reduce((s,ph)=>s+ph.weeks,0);
+  const projStart = new Date(proj.startDate);
+  const projEnd = addWeeks(projStart, totalWeeks);
+
+  // ── HEADER ──
+  doc.setFillColor(51,51,51);
+  doc.rect(0,0,pageW,13,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(255);
+  doc.text(`${proj.code||''}  ·  ${proj.name||''}`, 8, 9);
+  const pa=state.authors.find(a=>a.id===proj.authorId);
+  doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(200);
+  doc.text(`Inicio: ${formatDate(projStart)}  ·  ${totalWeeks} semanas`, pageW-8, 9, {align:'right'});
+
+  // ── BUILD WEEK DATA MAP ──
+  const weekPhaseMap={};
+  let wCursor=1;
+  proj.phases.forEach(ph=>{
+    const phDef=PHASE_DEFS.find(d=>d.key===ph.key);
+    for(let w=0;w<ph.weeks;w++){
+      weekPhaseMap[wCursor+w]={
+        phase:ph.key, phaseLabel:ph.label||(phDef?phDef.label:ph.key),
+        color:ph.color||(phDef?phDef.color:'#eee'),
+        authorIds:(ph.authorIds?.length)?ph.authorIds:(proj.authorId?[proj.authorId]:[]),
+      };
+    }
+    wCursor+=ph.weeks;
+  });
+  // Semana 1 siempre es Formalización de contrato
+  if(weekPhaseMap[1]) weekPhaseMap[1].phaseLabel = 'Formalización de contrato';
+
+  // Meetings by relWeek
+  const meetingMap={};
+  (proj.meetings||[]).forEach(m=>{ meetingMap[m.relWeek]=m; });
+
+  // ── CALENDAR GRID ──
+  const COLS=5;
+  const mL=8, mT=17;
+  const gridW=pageW-mL*2;
+  const cellCalW=gridW/COLS;
+  const cellCalH=17;
+  const rows=Math.ceil(totalWeeks/COLS);
+
+  for(let row=0;row<rows;row++){
+    const rowY=mT+row*(cellCalH+1.5);
+    if(rowY+cellCalH>pageH-12){
+      doc.addPage();
+      // re-draw header
+      doc.setFillColor(51,51,51); doc.rect(0,0,pageW,13,'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(255);
+      doc.text(`${proj.code||''}  ·  ${proj.name||''} (cont.)`, 8, 9);
+    }
+    const rowYActual = rowY > pageH-12 ? mT : rowY;
+
+    for(let col=0;col<COLS;col++){
+      const weekNum=row*COLS+col+1;
+      if(weekNum>totalWeeks) break;
+      const cellX=mL+col*cellCalW;
+      const cy=rowYActual;
+      const wp=weekPhaseMap[weekNum];
+      const meeting=meetingMap[weekNum];
+
+      // Cell background: ALWAYS phase color, never changed by meeting
+      if(wp){
+        const rgb=hexToRgb(wp.color);
+        doc.setFillColor(rgb[0]+(255-rgb[0])*0.3, rgb[1]+(255-rgb[1])*0.3, rgb[2]+(255-rgb[2])*0.3);
+      } else {
+        doc.setFillColor(245,245,242);
+      }
+      doc.rect(cellX, cy, cellCalW-1, cellCalH, 'F');
+      doc.setDrawColor(200,198,192);
+      doc.rect(cellX, cy, cellCalW-1, cellCalH, 'D');
+
+      // Semana — top left
+      doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(90);
+      doc.text(`Semana ${weekNum}`, cellX+2, cy+4.5);
+
+      // Fecha — top right
+      const wkDate=addWeeks(projStart, weekNum-1);
+      doc.setFont('helvetica','normal'); doc.setFontSize(5.5); doc.setTextColor(140);
+      doc.text(formatDate(wkDate), cellX+cellCalW-3, cy+4.5, {align:'right'});
+
+      // Fase — línea central (negrita si es formalización)
+      if(wp){
+        const isForm = weekNum===1;
+        doc.setFont('helvetica', isForm?'bold':'normal'); doc.setFontSize(7); doc.setTextColor(50);
+        doc.text(wp.phaseLabel, cellX+2, cy+10, {maxWidth: cellCalW-4});
+      }
+
+      // Reunión — solo el motivo en negrita
+      if(meeting){
+        doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(40);
+        const meetingText = meeting.label || `${meeting.num}ª Reunión`;
+        doc.text(meetingText, cellX+2, cy+14.5, {maxWidth: cellCalW-4});
+      }
+    }
+  }
+
+  // ── LEYENDA ──
+  const legY=pageH-6;
+  let lx=mL;
+  doc.setFontSize(5.5); doc.setFont('helvetica','bold'); doc.setTextColor(80);
+  doc.text('LEYENDA:', lx, legY); lx+=16;
+  proj.phases.filter(ph=>ph.weeks>0).forEach(ph=>{
+    const def=PHASE_DEFS.find(d=>d.key===ph.key);
+    const lbl=(ph.label||(def?def.label:ph.key));
+    const col=ph.color||(def?def.color:'#ccc');
+    const rgb=hexToRgb(col);
+    doc.setFillColor(rgb[0]+(255-rgb[0])*0.35, rgb[1]+(255-rgb[1])*0.35, rgb[2]+(255-rgb[2])*0.35);
+    doc.rect(lx, legY-3.5, 4, 3.5, 'F');
+    doc.setTextColor(60); doc.setFont('helvetica','normal');
+    doc.text(lbl, lx+5, legY);
+    lx+=5+doc.getTextWidth(lbl)+5;
+    if(lx>pageW-60){lx=mL;}
+  });
+  doc.setTextColor(160); doc.text('Ácrono Arquitectura S.C.P.', pageW-mL, legY, {align:'right'});
+
+  doc.save(`${proj.code||'proyecto'}_cronograma.pdf`);
+  toast('PDF del proyecto exportado ✓');
+}
+
+// ═══════════════════════════════════════════════
+// PROJECT REORDER
+// ═══════════════════════════════════════════════
+let projDragging = null;
+
+function startProjDrag(e, projId) {
+  e.preventDefault(); e.stopPropagation();
+  projDragging = projId;
+  const rows = document.querySelectorAll('.project-row');
+  rows.forEach(row => {
+    row.addEventListener('mouseover', onProjRowHover);
+  });
+  document.addEventListener('mouseup', stopProjDrag, {once:true});
+}
+
+function onProjRowHover(e) {
+  if (!projDragging) return;
+  const targetRow = e.currentTarget;
+  const targetId = targetRow.querySelector('.project-label')?.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
+  if (!targetId || targetId === projDragging) return;
+  const fromIdx = state.projects.findIndex(p=>p.id===projDragging);
+  const toIdx   = state.projects.findIndex(p=>p.id===targetId);
+  if (fromIdx<0||toIdx<0) return;
+  const [moved] = state.projects.splice(fromIdx,1);
+  state.projects.splice(toIdx,0,moved);
+  saveLocal(); pushToDropbox(); render();
+}
+
+function stopProjDrag() {
+  projDragging = null;
+  document.querySelectorAll('.project-row').forEach(row => {
+    row.removeEventListener('mouseover', onProjRowHover);
+  });
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+loadLocal();
+if(!state.authors || !state.authors.length) state.authors = getDefaultAuthors();
+// Handle OAuth2 callback
+handleOAuthCallback().then(() => {
+  if(state.dropbox.token){ setDbStatus(true); syncFromDropbox(); }
+  render();
+});
+</script>
+</body>
+</html>
