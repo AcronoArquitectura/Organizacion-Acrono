@@ -1071,7 +1071,7 @@ function saveProject() {
   const proj = {
     id: editingProjectId||('p'+Date.now()),
     code, name,
-    startDate: getMondayOfWeek(new Date(startRaw)).toISOString(),
+    startDate: new Date(startRaw + 'T00:00:00').toISOString(),
     authorId: panelProjectAuthorId,
     phases,
     meetings: collectMeetings(),
