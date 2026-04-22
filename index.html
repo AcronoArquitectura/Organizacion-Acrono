@@ -219,6 +219,12 @@
 
 <div id="subbar">
   <span id="window-label"></span>
+  <span style="margin-left:16px;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">Filtrar autor:</span>
+  <select id="author-filter" onchange="render()"
+    style="height:24px;border:1px solid var(--border-dark);border-radius:4px;padding:0 6px;font-size:11px;font-family:'Poppins',sans-serif;color:var(--text);background:var(--surface)">
+    <option value="">Todos</option>
+  </select>
+  <button class="btn" style="height:24px;padding:0 10px;font-size:10px;border-color:var(--border-dark)" onclick="clearAuthorFilter()">✕</button>
 </div>
 <div id="legend"></div>
 
@@ -596,6 +602,13 @@ function resetStorage() {
 function render() { renderLegend(); renderGantt(); }
 
 function renderLegend() {
+  // Update author filter select
+  const sel = document.getElementById('author-filter');
+  if (sel) {
+    const current = sel.value;
+    sel.innerHTML = '<option value="">Todos</option>' +
+      state.authors.map(a => `<option value="${a.id}" ${a.id===current?'selected':''}>${a.name}</option>`).join('');
+  }
   let h = '<span class="legend-title">Autores</span>';
   state.authors.forEach(a => {
     h += `<span class="legend-item"><span class="legend-dot" style="background:${a.color}"></span><span>${a.name}</span></span>`;
@@ -671,7 +684,14 @@ function renderGantt() {
   html += `</div></div>`;
 
   // Projects
-  const projs = state.projects;
+  const filterAuthorId = document.getElementById('author-filter')?.value || '';
+  const projs = filterAuthorId
+    ? state.projects.filter(proj => {
+        // Show if project author matches OR any phase author matches
+        if (proj.authorId === filterAuthorId) return true;
+        return (proj.phases||[]).some(ph => (ph.authorIds||[]).includes(filterAuthorId));
+      })
+    : state.projects;
   if (!projs.length) {
     html += `<div class="empty-state" style="margin-left:var(--label-w)"><h3>Sin proyectos</h3><p>Pulsa "+ Proyecto" para añadir el primero.</p></div>`;
     container.innerHTML = html; return;
@@ -1176,16 +1196,22 @@ function exportGeneralPDF() {
       const ids=(ph.authorIds?.length)?ph.authorIds:(proj.authorId?[proj.authorId]:[]);
       const authorColors=ids.map(id=>state.authors.find(a=>a.id===id)?.color||'#888');
       const abbr=(phDef?phDef.abbr:null)||ph.abbr||ph.key.slice(0,2).toUpperCase();
+      // Clip to visible window
+      const maxX = mL+labelW+availW;
+      const clippedBx = Math.max(bx, mL+labelW);
+      const clippedRight = Math.min(bx+bw, maxX);
+      if(clippedRight<=mL+labelW){cur=addWeeks(cur,ph.weeks);return;}
+      const clippedBw = clippedRight-clippedBx;
       const nSegs=authorColors.length||1;
       const segH=(rowH-3)/nSegs;
       authorColors.forEach((ac,ai)=>{
         doc.setFillColor(...hexToRgb(ac));
-        doc.rect(bx,y+1.5+ai*segH,bw,segH,'F');
+        doc.rect(clippedBx,y+1.5+ai*segH,clippedBw,segH,'F');
       });
-      // abbr always visible, white text centred on bar
-      if(bw>6){
+      // abbr always visible, white text centred on visible bar portion
+      if(clippedBw>6){
         doc.setFont('helvetica','bold'); doc.setFontSize(5.5); doc.setTextColor(255,255,255);
-        doc.text(abbr, bx+bw/2, y+rowH/2+1, {align:'center'});
+        doc.text(abbr, clippedBx+clippedBw/2, y+rowH/2+1, {align:'center'});
       }
       cur=addWeeks(cur,ph.weeks);
     });
@@ -1331,6 +1357,12 @@ function exportSinglePDF() {
 
   doc.save(`${proj.code||'proyecto'}_cronograma.pdf`);
   toast('PDF del proyecto exportado ✓');
+}
+
+function clearAuthorFilter() {
+  const sel = document.getElementById('author-filter');
+  if (sel) sel.value = '';
+  render();
 }
 
 // ═══════════════════════════════════════════════
