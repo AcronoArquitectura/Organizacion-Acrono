@@ -614,7 +614,8 @@ function renderGantt() {
       const nStripes=authorColors.length||1;const stripeW=clip.width/nStripes;
       const barStripes=authorColors.map((ac,si)=>`<div style="position:absolute;left:${si*stripeW}px;top:0;bottom:0;width:${stripeW}px;background:${ac};opacity:0.85"></div>`).join('');
       const circleHtml=dotVisible?`<div style="position:absolute;left:${dotLeft}px;top:50%;transform:translateY(-50%);width:${dotSize}px;height:${dotSize}px;border-radius:50%;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;z-index:2;flex-shrink:0"><span style="font-size:${dotSize<16?6:7}px;font-weight:700;color:#fff;font-family:'Poppins',sans-serif">${abbr}</span></div>`:'';
-      barsHtml+=`<div class="phase-bar" style="left:${clip.left}px;width:${clip.width}px;height:${barH}px;border-radius:4px;overflow:hidden;position:relative;" onmouseenter="showTip(event,'${tip.replace(/'/g,'&#39;').replace(/\n/g,'\\n')}')" onmouseleave="hideTip()" onclick="openEditProject('${proj.id}')">${barStripes}${circleHtml}</div>`;
+      const innerBar=`<div style="position:absolute;inset:0;overflow:hidden;border-radius:4px">${barStripes}${circleHtml}</div>`;
+      barsHtml+=`<div class="phase-bar" style="left:${clip.left}px;width:${clip.width}px;height:${barH}px;" onmouseenter="showTip(event,'${tip.replace(/'/g,'&#39;').replace(/\n/g,'\\n')}')" onmouseleave="hideTip()" onclick="openEditProject('${proj.id}')">${innerBar}</div>`;
       cursor=addWeeks(cursor,ph.weeks);
     });
     const allIds=new Set();
@@ -672,7 +673,7 @@ function renderObrasGantt() {
       const nStripes=authorColors.length||1;const stripeW=clip.width/nStripes;
       const barStripes=authorColors.map((ac,si)=>`<div style="position:absolute;left:${si*stripeW}px;top:0;bottom:0;width:${stripeW}px;background:${ac};opacity:0.85"></div>`).join('');
       const circleHtml=dotVisible?`<div style="position:absolute;left:${dotLeft}px;top:50%;transform:translateY(-50%);width:${dotSize}px;height:${dotSize}px;border-radius:50%;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;z-index:2;flex-shrink:0"><span style="font-size:${dotSize<16?6:7}px;font-weight:700;color:#fff;font-family:'Poppins',sans-serif">${abbr}</span></div>`:'';
-      barsHtml+=`<div class="phase-bar" style="left:${clip.left}px;width:${clip.width}px;height:${barH}px;border-radius:4px;overflow:hidden;position:relative;" onmouseenter="showTip(event,'${tip.replace(/'/g,'&#39;').replace(/\n/g,'\\n')}')" onmouseleave="hideTip()" onclick="openEditObra('${obra.id}')">${barStripes}${circleHtml}</div>`;
+      barsHtml+=`<div class="phase-bar" style="left:${clip.left}px;width:${clip.width}px;height:${barH}px;border-radius:4px;overflow:hidden;" onmouseenter="showTip(event,'${tip.replace(/'/g,'&#39;').replace(/\n/g,'\\n')}')" onmouseleave="hideTip()" onclick="openEditObra('${obra.id}')">${barStripes}${circleHtml}</div>`;
       cursor=addWeeks(cursor,ph.weeks);
     });
     const authorTag=obraAuthor?obraAuthor.name:'';
