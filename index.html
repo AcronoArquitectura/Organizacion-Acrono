@@ -10,7 +10,7 @@
   :root {
     --bg:#f5f4f0;--surface:#fff;--border:#e0ddd5;--border-dark:#c8c4bc;
     --text:#333333;--text-muted:#6b6a66;--text-faint:#a09e99;--accent:#333333;
-    --radius:6px;--header-h:56px;--row-h:22px;--label-w:120px;--cell-w:28px;
+    --radius:6px;--header-h:56px;--row-h:48px;--label-w:200px;--cell-w:28px;
     font-family:'Poppins',sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -64,7 +64,7 @@
 
   .project-row{display:flex;align-items:stretch;border-bottom:1px solid var(--border);min-height:var(--row-h);background:var(--surface);transition:background .1s;}
   .project-row:hover{background:#fafaf8;}
-  .project-label{width:var(--label-w);min-width:var(--label-w);padding:2px 6px 2px 18px;display:flex;align-items:center;border-right:1px solid var(--border);cursor:pointer;position:sticky;left:0;background:inherit;z-index:5;}
+  .project-label{width:var(--label-w);min-width:var(--label-w);padding:6px 10px;display:flex;flex-direction:column;justify-content:center;gap:2px;border-right:1px solid var(--border);cursor:pointer;position:sticky;left:0;background:inherit;z-index:5;}
   .project-label:hover{background:#f0efe9;}
   .project-name{font-size:11px;font-weight:600;}
   .project-code{font-size:9px;color:var(--text-muted);font-family:monospace;}
@@ -608,7 +608,7 @@ function renderGantt() {
     const allIds=new Set();
     proj.phases.forEach(ph=>{if(ph.authorIds?.length)ph.authorIds.forEach(id=>allIds.add(id));else if(proj.authorId)allIds.add(proj.authorId);});
     const authorTags=[...allIds].map(id=>state.authors.find(a=>a.id===id)?.name?.split(' ')[0]||'').filter(Boolean).join(', ');
-    html+=`<div class="project-row"><div class="project-label" onclick="openEditProject('${proj.id}')" style="border-left:3px solid ${accentColor};position:relative;padding-left:18px"><span class="proj-drag-handle" onmousedown="startProjDrag(event,'${proj.id}')" onclick="event.stopPropagation()">⠿</span><span class="project-code" style="font-size:9px;font-weight:600">${proj.code||''}</span></div><div class="project-bars" style="width:${weeks.length*cellW}px;height:var(--row-h)">${gridHtml}${barsHtml}</div></div>`;
+    html+=`<div class="project-row"><div class="project-label" onclick="openEditProject('${proj.id}')" style="border-left:3px solid ${accentColor};position:relative;padding-left:18px"><span class="proj-drag-handle" onmousedown="startProjDrag(event,'${proj.id}')" onclick="event.stopPropagation()">⠿</span><span class="project-code">${proj.code||''}</span><span class="project-name">${proj.name||''}</span><span class="project-authors-tag">${authorTags}</span></div><div class="project-bars" style="width:${weeks.length*cellW}px;height:var(--row-h)">${gridHtml}${barsHtml}</div></div>`;
   });
   container.innerHTML=html;
 }
@@ -705,7 +705,7 @@ function renderOrgGantt() {
     const itemStart=new Date(item.startDate);
     const startPx=weeksBetween(weeks[0],itemStart)*cellW;
     const totalPx=Math.max(totalWeeks*cellW-1,4);
-    const barH=Math.min(cellW-2,26);
+    const barH=14;
     const clip=clipBar(startPx,totalPx,weeks.length*cellW);
     const gridHtml=buildGridLines(weeks,cellW,todayIdx);
     let barsHtml='';
@@ -726,7 +726,7 @@ function renderOrgGantt() {
       barsHtml=`<div class="phase-bar" style="left:${clip.left}px;width:${clip.width}px;height:${barH}px;border-radius:4px;overflow:hidden;background:${barBg};border:1.5px solid ${barBorder};" onmouseenter="showTip(event,'${tip.replace(/'/g,'&#39;').replace(/\n/g,'\\n')}')" onmouseleave="hideTip()">${circleHtml}</div>`;
     }
     const onclick=isProject?`openEditProject('${item.id}')`:`openEditObra('${item.id}')`;
-    html+=`<div class="project-row"><div class="project-label" onclick="${onclick}" style="border-left:3px solid ${authorColor};padding-left:10px"><span class="project-code" style="font-size:10px;font-weight:600">${item.code||''}</span><span class="project-authors-tag">${author?author.name:''} · ${isProject?'Proyecto':'Obra'}</span></div><div class="project-bars" style="width:${weeks.length*cellW}px;height:var(--row-h)">${gridHtml}${barsHtml}</div></div>`;
+    html+=`<div class="project-row" style="min-height:22px;"><div class="project-label" onclick="${onclick}" style="border-left:3px solid ${authorColor};padding:2px 6px;flex-direction:row;align-items:center;gap:4px;"><span class="project-code" style="font-size:9px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${item.code||''}</span></div><div class="project-bars" style="width:${weeks.length*cellW}px;height:22px">${gridHtml}${barsHtml}</div></div>`;
   });
 
   // Legend
