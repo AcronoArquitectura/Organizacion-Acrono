@@ -10,7 +10,7 @@
   :root {
     --bg:#f5f4f0;--surface:#fff;--border:#e0ddd5;--border-dark:#c8c4bc;
     --text:#333333;--text-muted:#6b6a66;--text-faint:#a09e99;--accent:#333333;
-    --radius:6px;--header-h:56px;--row-h:48px;--label-w:200px;--cell-w:28px;
+    --radius:6px;--header-h:56px;--row-h:32px;--label-w:140px;--cell-w:28px;
     font-family:'Poppins',sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -119,15 +119,7 @@
   #tooltip{position:fixed;background:#333;color:#fff;padding:6px 10px;border-radius:5px;font-size:10px;pointer-events:none;z-index:500;opacity:0;transition:opacity .15s;max-width:240px;line-height:1.5;white-space:pre;font-family:'Poppins',sans-serif;}
   .empty-state{text-align:center;padding:80px 20px;color:var(--text-muted);}
   .empty-state h3{font-size:16px;margin-bottom:8px;color:var(--text);}
-  @media print {
-    header, #module-tabs, #subbar { display:none !important; }
-    #legend { border:none; }
-    main { height:auto; overflow:visible; }
-    #gantt-wrapper { overflow:visible; height:auto; }
-    #gantt-container { padding:8px; }
-    .project-label { position:relative !important; }
-    .proj-drag-handle { display:none !important; }
-  }
+
 </style>
 </head>
 <body>
@@ -143,7 +135,6 @@
   <button class="btn" id="btn-reset-view" style="display:none" onclick="resetView()">↺ Vista</button>
   <button class="btn primary" id="btn-new-item" onclick="newItem()">+ Proyecto</button>
   <button class="btn" id="btn-export-pdf" onclick="exportCurrentPDF()">↓ PDF general</button>
-  <button class="btn" id="btn-print-org" style="display:none" onclick="printOrgView()">🖨 Imprimir</button>
 </header>
 
 <div id="module-tabs">
@@ -455,15 +446,11 @@ function switchTab(tab) {
   if(tab==='org'){btn.style.display='none';}
   else{btn.style.display='flex';btn.textContent=newLabels[tab];}
   document.getElementById('btn-export-pdf').style.display='flex';
-  document.getElementById('btn-print-org').style.display=tab==='org'?'flex':'none';
+
   extraWeeks=0;document.getElementById('btn-reset-view').style.display='none';
   render();
 }
 function newItem(){if(activeTab==='proyectos')openNewProject();else if(activeTab==='obras')openNewObra();}
-function printOrgView() {
-  window.print();
-}
-
 function exportCurrentPDF(){
   if(activeTab==='proyectos') exportGeneralPDF();
   else if(activeTab==='org') exportOrgPDF();
@@ -621,7 +608,7 @@ function renderGantt() {
     const allIds=new Set();
     proj.phases.forEach(ph=>{if(ph.authorIds?.length)ph.authorIds.forEach(id=>allIds.add(id));else if(proj.authorId)allIds.add(proj.authorId);});
     const authorTags=[...allIds].map(id=>state.authors.find(a=>a.id===id)?.name?.split(' ')[0]||'').filter(Boolean).join(', ');
-    html+=`<div class="project-row"><div class="project-label" onclick="openEditProject('${proj.id}')" style="border-left:3px solid ${accentColor};position:relative;padding-left:18px"><span class="proj-drag-handle" onmousedown="startProjDrag(event,'${proj.id}')" onclick="event.stopPropagation()">⠿</span><span class="project-code">${proj.code||''}</span><span class="project-name">${proj.name||''}</span><span class="project-authors-tag">${authorTags}</span></div><div class="project-bars" style="width:${weeks.length*cellW}px;height:var(--row-h)">${gridHtml}${barsHtml}</div></div>`;
+    html+=`<div class="project-row"><div class="project-label" onclick="openEditProject('${proj.id}')" style="border-left:3px solid ${accentColor};position:relative;padding-left:18px"><span class="proj-drag-handle" onmousedown="startProjDrag(event,'${proj.id}')" onclick="event.stopPropagation()">⠿</span><span class="project-code" style="font-size:10px;font-weight:600">${proj.code||''}</span></div><div class="project-bars" style="width:${weeks.length*cellW}px;height:var(--row-h)">${gridHtml}${barsHtml}</div></div>`;
   });
   container.innerHTML=html;
 }
@@ -1048,7 +1035,7 @@ loadLocal();
 if(!state.authors||!state.authors.length) state.authors=getDefaultAuthors();
 // Hide new item button on org tab initially
 document.getElementById('btn-new-item').style.display='none';
-document.getElementById('btn-print-org').style.display='none';
+
 handleOAuthCallback().then(()=>{
   if(state.dropbox.token){setDbStatus(true);syncFromDropbox();}
   render();
