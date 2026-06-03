@@ -1,10 +1,12 @@
-export default function PresupuestosPage() {
+import { readAllData } from '@/lib/data/storage';
+import PresupuestosView from '@/components/modules/presupuestos/PresupuestosView';
+
+export default async function PresupuestosPage() {
+  const data = await readAllData();
   return (
-    <div className="px-5 py-[18px] max-w-[1340px]">
-      <h1 className="text-lg font-semibold text-app-text mb-1">Presupuestos</h1>
-      <p className="text-[12px] text-app-text-faint">
-        Próximamente: lista de presupuestos y editor con calculadora COAG Granada 2026.
-      </p>
-    </div>
+    <PresupuestosView
+      initialPresupuestos={data.presupuestos}
+      clientes={data.clientes}
+    />
   );
 }

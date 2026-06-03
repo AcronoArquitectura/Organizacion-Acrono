@@ -164,7 +164,9 @@ export interface Partida {
 
 export interface Observacion {
   id: string;
-  text: string;
+  grupo?: string;
+  txt?: string;
+  text?: string; // alias legacy
 }
 
 export interface Presupuesto {
