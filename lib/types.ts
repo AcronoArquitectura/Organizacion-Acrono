@@ -60,7 +60,7 @@ export interface Cliente {
   id: string;
   nombre: string;
   tipo: 'Particular' | 'Empresa';
-  estado: 'activo' | 'finalizado';
+  estado: 'activo' | 'finalizado' | 'potencial';
   desde: string; // 'YYYY-MM'
   nif: string;
   tel: string;

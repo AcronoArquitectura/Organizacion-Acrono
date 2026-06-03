@@ -1,10 +1,12 @@
-export default function ClientesPage() {
+import { readAllData } from '@/lib/data/storage';
+import ClientesView from '@/components/modules/clientes/ClientesView';
+
+export default async function ClientesPage() {
+  const data = await readAllData();
   return (
-    <div className="px-5 py-[18px] max-w-[1340px]">
-      <h1 className="text-lg font-semibold text-app-text mb-1">Clientes</h1>
-      <p className="text-[12px] text-app-text-faint">
-        Próximamente: lista de clientes, ficha con resumen económico y proyectos vinculados.
-      </p>
-    </div>
+    <ClientesView
+      initialClientes={data.clientes}
+      orgProyectos={data.org.projects}
+    />
   );
 }
