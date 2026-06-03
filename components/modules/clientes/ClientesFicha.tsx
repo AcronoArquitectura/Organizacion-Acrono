@@ -128,7 +128,7 @@ export default function ClientesFicha({ cliente, orgProyectos, facturas, presupu
             })
           )}
           <button
-            onClick={() => router.push('/presupuestos')}
+            onClick={() => router.push(cliente.nif ? `/presupuestos?clienteNif=${encodeURIComponent(cliente.nif)}` : '/presupuestos')}
             style={{ height: 28, padding: '0 12px', borderRadius: 6, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', border: '1px solid #c8c4bc', background: '#fff', color: '#6b6a66', marginTop: 4 }}
           >
             + Nuevo presupuesto

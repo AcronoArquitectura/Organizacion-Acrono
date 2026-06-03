@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import type { Presupuesto, Cliente } from '@/lib/types';
 import { upsertPresupuesto, deletePresupuesto } from '@/lib/actions/presupuestos';
 import { nuevoPresupuestoObj } from '@/lib/utils/coag';
@@ -10,14 +10,36 @@ import PresupuestoEditor from './PresupuestoEditor';
 interface Props {
   initialPresupuestos: Presupuesto[];
   clientes: Cliente[];
+  initialClienteNif?: string;
 }
 
-export default function PresupuestosView({ initialPresupuestos, clientes }: Props) {
+export default function PresupuestosView({ initialPresupuestos, clientes, initialClienteNif }: Props) {
   const [presupuestos, setPresupuestos] = useState<Presupuesto[]>(initialPresupuestos);
   const [editing, setEditing] = useState<Presupuesto | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const isNew = editing ? !presupuestos.find(p => p.id === editing.id) : false;
+
+  useEffect(() => {
+    if (!initialClienteNif) return;
+    const c = clientes.find(cl => cl.nif === initialClienteNif);
+    if (!c) return;
+    const nuevo = nuevoPresupuestoObj(initialPresupuestos);
+    setEditing({
+      ...nuevo,
+      cliente: {
+        nombre: c.nombre,
+        dni:    c.nif,
+        tel:    c.tel,
+        email:  c.email,
+        dir1:   c.direccionCalle,
+        dir2:   c.direccionCPCiudad,
+        dir3:   c.direccionProvincia,
+      },
+      clienteRefId: c.id,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function openNew() {
     setEditing(nuevoPresupuestoObj(presupuestos));

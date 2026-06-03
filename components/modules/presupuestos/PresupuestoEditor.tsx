@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import type { Presupuesto, Cliente, PemRow, Partida } from '@/lib/types';
 import {
   FL_OPTS, FT_VIV, FC_VIV, USOS_OTROS, USOS_URB, OBSERVACIONES_SEED,
@@ -42,8 +42,23 @@ interface Props {
 export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave, onDelete, onCancel, isPending }: Props) {
   const [p, setP] = useState<Presupuesto>(presupuesto);
   const router = useRouter();
+  const [showSugg, setShowSugg] = useState(false);
+  const suppressing = useRef(false);
 
   function upd(patch: Partial<Presupuesto>) { setP(prev => ({ ...prev, ...patch })); }
+
+  const sugg = p.cliente.nombre.trim().length > 0
+    ? clientes.filter(c => c.nombre.toLowerCase().includes(p.cliente.nombre.toLowerCase())).slice(0, 7)
+    : [];
+
+  function selectCliente(c: Cliente) {
+    suppressing.current = true;
+    upd({
+      cliente: { nombre: c.nombre, dni: c.nif, tel: c.tel, email: c.email, dir1: c.direccionCalle, dir2: c.direccionCPCiudad, dir3: c.direccionProvincia },
+      clienteRefId: c.id,
+    });
+    setShowSugg(false);
+  }
 
   // Familia: reset capitulos
   function setFamilia(familia: Presupuesto['familia']) {
@@ -161,8 +176,30 @@ export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave
                 <input type="date" style={P.inp} value={p.fecha} onChange={e => upd({ fecha: e.target.value })} />
               </div>
             </div>
-            <div style={P.fg}><label style={P.lbl}>Cliente (nombre / razón social)</label>
-              <input style={P.inp} value={p.cliente.nombre} onChange={e => upd({ cliente: { ...p.cliente, nombre: e.target.value } })} />
+            <div style={{ ...P.fg, position: 'relative' }}>
+              <label style={P.lbl}>Cliente (nombre / razón social)</label>
+              <input
+                style={P.inp}
+                value={p.cliente.nombre}
+                placeholder="Buscar cliente existente o escribir nuevo…"
+                onChange={e => { upd({ cliente: { ...p.cliente, nombre: e.target.value }, clienteRefId: null }); setShowSugg(true); }}
+                onFocus={() => { if (!suppressing.current) setShowSugg(true); suppressing.current = false; }}
+                onBlur={() => setTimeout(() => setShowSugg(false), 150)}
+              />
+              {showSugg && sugg.length > 0 && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #c8c4bc', borderRadius: 6, boxShadow: '0 6px 20px rgba(0,0,0,.1)', zIndex: 200, maxHeight: 220, overflowY: 'auto', marginTop: 2 }}>
+                  {sugg.map(c => (
+                    <div
+                      key={c.id}
+                      onMouseDown={() => selectCliente(c)}
+                      style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f0ede8', fontSize: 12, color: '#333' }}
+                    >
+                      <div style={{ fontWeight: 500 }}>{c.nombre}</div>
+                      {c.nif && <div style={{ fontSize: 10, color: '#a09e99', marginTop: 1 }}>{c.nif}</div>}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div style={P.row3}>
               <div style={P.fg}><label style={P.lbl}>DNI/NIF</label>
