@@ -7,6 +7,7 @@ import GastosTab from './GastosTab';
 import ProveedoresTab from './ProveedoresTab';
 import ResultadosTab from './ResultadosTab';
 import GraficasTab from './GraficasTab';
+import ImportarTab from './ImportarTab';
 
 interface Props {
   initialFacturas: Factura[];
@@ -22,7 +23,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'proveedores', label: 'Proveedores' },
   { id: 'resultados',  label: 'Resultados' },
   { id: 'graficas',    label: 'Gráficas anuales' },
-  { id: 'importar',    label: 'Importar extracto' },
+  { id: 'importar',    label: 'Importar datos' },
 ];
 
 export default function ContabilidadView({ initialFacturas, initialGastos, initialProveedores }: Props) {
@@ -59,18 +60,13 @@ export default function ContabilidadView({ initialFacturas, initialGastos, initi
         {tab === 'resultados'  && <ResultadosTab facturas={facturas} gastos={gastos} />}
         {tab === 'graficas'    && <GraficasTab facturas={facturas} gastos={gastos} />}
         {tab === 'importar'    && (
-          <div style={{ background: '#fff', border: '1px solid #e0ddd5', borderRadius: 6, padding: 36, textAlign: 'center' }}>
-            <div style={{ border: '1.5px dashed #c8c4bc', borderRadius: 6, padding: 36, color: '#a09e99', fontSize: 12, marginBottom: 18 }}>
-              <div style={{ fontSize: 30, marginBottom: 8 }}>↑</div>
-              <div style={{ fontSize: 13, color: '#6b6a66', marginBottom: 4 }}>Arrastra aquí el extracto bancario</div>
-              <div>CSV o Excel (.xlsx)</div>
-            </div>
-            <div style={{ fontSize: 11, color: '#a09e99', maxWidth: 420, margin: '0 auto', lineHeight: 1.7 }}>
-              El sistema detectará automáticamente ingresos y gastos y los cruzará con las facturas existentes.
-              Podrás revisar y confirmar cada asignación antes de guardar.{' '}
-              <em>(Pendiente de implementar en una iteración posterior.)</em>
-            </div>
-          </div>
+          <ImportarTab
+            onImport={({ facturas: f, gastos: g, proveedores: p }) => {
+              setFacturas(f);
+              setGastos(g);
+              setProveedores(p);
+            }}
+          />
         )}
       </div>
     </div>

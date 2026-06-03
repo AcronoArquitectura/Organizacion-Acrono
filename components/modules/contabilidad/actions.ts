@@ -3,7 +3,8 @@
 import { getFacturas, saveFacturas } from '@/lib/data/facturas';
 import { getGastos, saveGastos } from '@/lib/data/gastos';
 import { getProveedores, saveProveedores } from '@/lib/data/proveedores';
-import type { Factura, Gasto, Proveedor } from '@/lib/types';
+import { getClientes, saveClientes } from '@/lib/data/clientes';
+import type { Factura, Gasto, Proveedor, Cliente } from '@/lib/types';
 import { guessCategoria } from './calculos';
 
 // ── Facturas ──────────────────────────────────────────────────────────────────
@@ -70,4 +71,64 @@ export async function deleteProveedor(id: string): Promise<Proveedor[]> {
   const proveedores = (await getProveedores()).filter(x => x.id !== id);
   await saveProveedores(proveedores);
   return proveedores;
+}
+
+// ── Importación de datos históricos ──────────────────────────────────────────
+
+interface ImportPayload {
+  facturas: Factura[];
+  gastos: Gasto[];
+  proveedores: Proveedor[];
+  clientes: Cliente[];
+}
+
+interface ImportResult {
+  facturas: Factura[];
+  gastos: Gasto[];
+  proveedores: Proveedor[];
+  added: { facturas: number; gastos: number; proveedores: number; clientes: number };
+}
+
+export async function importarDatos(payload: ImportPayload): Promise<ImportResult> {
+  const [existingFacturas, existingGastos, existingProveedores, existingClientes] = await Promise.all([
+    getFacturas(),
+    getGastos(),
+    getProveedores(),
+    getClientes(),
+  ]);
+
+  const existingFacturaIds   = new Set(existingFacturas.map(x => x.id));
+  const existingGastoIds     = new Set(existingGastos.map(x => x.id));
+  const existingProveedorIds = new Set(existingProveedores.map(x => x.id));
+  // Clientes: deduplicar por NIF (ignorar NIF vacío)
+  const existingClienteNifs  = new Set(existingClientes.map(x => x.nif).filter(Boolean));
+
+  const newFacturas    = payload.facturas.filter(f => !existingFacturaIds.has(f.id));
+  const newGastos      = payload.gastos.filter(g => !existingGastoIds.has(g.id));
+  const newProveedores = payload.proveedores.filter(p => !existingProveedorIds.has(p.id));
+  const newClientes    = payload.clientes.filter(c => !c.nif || !existingClienteNifs.has(c.nif));
+
+  const mergedFacturas    = [...existingFacturas,    ...newFacturas];
+  const mergedGastos      = [...existingGastos,      ...newGastos];
+  const mergedProveedores = [...existingProveedores,  ...newProveedores];
+  const mergedClientes    = [...existingClientes,     ...newClientes];
+
+  await Promise.all([
+    saveFacturas(mergedFacturas),
+    saveGastos(mergedGastos),
+    ...(newProveedores.length > 0 ? [saveProveedores(mergedProveedores)] : []),
+    ...(newClientes.length > 0    ? [saveClientes(mergedClientes)]       : []),
+  ]);
+
+  return {
+    facturas:    mergedFacturas,
+    gastos:      mergedGastos,
+    proveedores: mergedProveedores,
+    added: {
+      facturas:    newFacturas.length,
+      gastos:      newGastos.length,
+      proveedores: newProveedores.length,
+      clientes:    newClientes.length,
+    },
+  };
 }
