@@ -3,8 +3,8 @@
 import { getFacturas, saveFacturas } from '@/lib/data/facturas';
 import { getGastos, saveGastos } from '@/lib/data/gastos';
 import { getProveedores, saveProveedores } from '@/lib/data/proveedores';
-import { getClientes, saveClientes } from '@/lib/data/clientes';
-import type { Factura, Gasto, Proveedor, Cliente } from '@/lib/types';
+import { readAllData, writeAllData } from '@/lib/data/storage';
+import type { Factura, FacturaLine, Gasto, Proveedor, Cliente } from '@/lib/types';
 import { guessCategoria } from './calculos';
 
 // ── Facturas ──────────────────────────────────────────────────────────────────
@@ -75,6 +75,51 @@ export async function deleteProveedor(id: string): Promise<Proveedor[]> {
 
 // ── Importación de datos históricos ──────────────────────────────────────────
 
+// Normaliza una factura del JSON histórico al formato actual del tipo Factura.
+// El JSON de acrono.html usa nombres de campo distintos en algunos casos:
+//   clienteNIF       → clienteNif
+//   clienteDireccion → clienteDir
+//   lines[].concepto → lines[].desc
+// También soporta el formato plano antiguo (base/iva/retencion en la raíz, sin lines[]).
+function normalizeFactura(f: Factura): Factura {
+  const raw = f as unknown as Record<string, unknown>;
+
+  let lines: FacturaLine[] = [];
+  if (Array.isArray(raw.lines) && (raw.lines as unknown[]).length > 0) {
+    lines = (raw.lines as Record<string, unknown>[]).map(l => ({
+      base: Number(l.base) || 0,
+      iva:  Number(l.iva)  || 0,
+      irpf: Number(l.irpf) || 0,
+      desc: String(l.desc ?? l.concepto ?? ''),
+    }));
+  } else if (raw.base !== undefined) {
+    // Formato plano antiguo: base/iva/retencion en la raíz
+    lines = [{
+      base: Number(raw.base) || 0,
+      iva:  Number(raw.iva)  || 0,
+      irpf: Number(raw.retencion ?? raw.irpf) || 0,
+      desc: '',
+    }];
+  }
+
+  return {
+    id:             String(raw.id             ?? ''),
+    numero:         String(raw.numero         ?? ''),
+    fecha:          String(raw.fecha          ?? ''),
+    vencimiento:    String(raw.vencimiento    ?? ''),
+    cliente:        String(raw.cliente        ?? ''),
+    clienteNif:     String(raw.clienteNif     ?? raw.clienteNIF     ?? ''),
+    clienteDir:     String(raw.clienteDir     ?? raw.clienteDireccion ?? ''),
+    refPresupuesto: String(raw.refPresupuesto ?? raw.refPresup       ?? ''),
+    pieTexto:       String(raw.pieTexto       ?? ''),
+    concepto:       String(raw.concepto       ?? ''),
+    estado:         raw.estado === 'cobrada' ? 'cobrada' : 'pendiente',
+    nota:           String(raw.nota           ?? ''),
+    tags:           Array.isArray(raw.tags) ? (raw.tags as string[]) : [],
+    lines,
+  };
+}
+
 interface ImportPayload {
   facturas: Factura[];
   gastos: Gasto[];
@@ -90,40 +135,39 @@ interface ImportResult {
 }
 
 export async function importarDatos(payload: ImportPayload): Promise<ImportResult> {
-  const [existingFacturas, existingGastos, existingProveedores, existingClientes] = await Promise.all([
-    getFacturas(),
-    getGastos(),
-    getProveedores(),
-    getClientes(),
-  ]);
+  // Lectura única — evita la condición de carrera donde cada saveX() hace su propio
+  // readAllData() + writeAllData() en paralelo y el último sobrescribe a los anteriores.
+  const allData = await readAllData();
 
-  const existingFacturaIds   = new Set(existingFacturas.map(x => x.id));
-  const existingGastoIds     = new Set(existingGastos.map(x => x.id));
-  const existingProveedorIds = new Set(existingProveedores.map(x => x.id));
-  // Clientes: deduplicar por NIF (ignorar NIF vacío)
-  const existingClienteNifs  = new Set(existingClientes.map(x => x.nif).filter(Boolean));
+  const normalizedFacturas = payload.facturas.map(normalizeFactura);
 
-  const newFacturas    = payload.facturas.filter(f => !existingFacturaIds.has(f.id));
+  const existingFacturaIds   = new Set(allData.contabilidad.facturas.map(x => x.id));
+  const existingGastoIds     = new Set(allData.contabilidad.gastos.map(x => x.id));
+  const existingProveedorIds = new Set(allData.contabilidad.proveedores.map(x => x.id));
+  const existingClienteNifs  = new Set(allData.clientes.map(x => x.nif).filter(Boolean));
+
+  const newFacturas    = normalizedFacturas.filter(f => f.id && !existingFacturaIds.has(f.id));
   const newGastos      = payload.gastos.filter(g => !existingGastoIds.has(g.id));
   const newProveedores = payload.proveedores.filter(p => !existingProveedorIds.has(p.id));
   const newClientes    = payload.clientes.filter(c => !c.nif || !existingClienteNifs.has(c.nif));
 
-  const mergedFacturas    = [...existingFacturas,    ...newFacturas];
-  const mergedGastos      = [...existingGastos,      ...newGastos];
-  const mergedProveedores = [...existingProveedores,  ...newProveedores];
-  const mergedClientes    = [...existingClientes,     ...newClientes];
+  const mergedData = {
+    ...allData,
+    clientes: [...allData.clientes, ...newClientes],
+    contabilidad: {
+      facturas:    [...allData.contabilidad.facturas,    ...newFacturas],
+      gastos:      [...allData.contabilidad.gastos,      ...newGastos],
+      proveedores: [...allData.contabilidad.proveedores, ...newProveedores],
+    },
+  };
 
-  await Promise.all([
-    saveFacturas(mergedFacturas),
-    saveGastos(mergedGastos),
-    ...(newProveedores.length > 0 ? [saveProveedores(mergedProveedores)] : []),
-    ...(newClientes.length > 0    ? [saveClientes(mergedClientes)]       : []),
-  ]);
+  // Escritura única — un solo round-trip a Dropbox
+  await writeAllData(mergedData);
 
   return {
-    facturas:    mergedFacturas,
-    gastos:      mergedGastos,
-    proveedores: mergedProveedores,
+    facturas:    mergedData.contabilidad.facturas,
+    gastos:      mergedData.contabilidad.gastos,
+    proveedores: mergedData.contabilidad.proveedores,
     added: {
       facturas:    newFacturas.length,
       gastos:      newGastos.length,
