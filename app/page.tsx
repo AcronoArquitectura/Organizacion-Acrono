@@ -1,10 +1,23 @@
-export default function DashboardPage() {
+import { getFacturas } from '@/lib/data/facturas';
+import { getGastos } from '@/lib/data/gastos';
+import { getOrg } from '@/lib/data/organizacion';
+import { getPresupuestos } from '@/lib/data/presupuestos';
+import DashboardView from '@/components/modules/dashboard/DashboardView';
+
+export default async function DashboardPage() {
+  const [facturas, gastos, org, presupuestos] = await Promise.all([
+    getFacturas(),
+    getGastos(),
+    getOrg(),
+    getPresupuestos(),
+  ]);
+
   return (
-    <div className="px-5 py-[18px] max-w-[1340px]">
-      <h1 className="text-lg font-semibold text-app-text mb-1">Dashboard</h1>
-      <p className="text-[12px] text-app-text-faint">
-        Próximamente: KPIs de facturación y gastos, gráfica mensual y tabla de proyectos activos.
-      </p>
-    </div>
+    <DashboardView
+      facturas={facturas}
+      gastos={gastos}
+      org={org}
+      presupuestos={presupuestos}
+    />
   );
 }
