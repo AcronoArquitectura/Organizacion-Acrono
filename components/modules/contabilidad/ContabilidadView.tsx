@@ -1,0 +1,78 @@
+'use client';
+
+import { useState, useTransition } from 'react';
+import type { Factura, Gasto, Proveedor } from '@/lib/types';
+import FacturasTab from './FacturasTab';
+import GastosTab from './GastosTab';
+import ProveedoresTab from './ProveedoresTab';
+import ResultadosTab from './ResultadosTab';
+import GraficasTab from './GraficasTab';
+
+interface Props {
+  initialFacturas: Factura[];
+  initialGastos: Gasto[];
+  initialProveedores: Proveedor[];
+}
+
+type Tab = 'facturas' | 'gastos' | 'proveedores' | 'resultados' | 'graficas' | 'importar';
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'facturas',    label: 'Facturas emitidas' },
+  { id: 'gastos',      label: 'Gastos' },
+  { id: 'proveedores', label: 'Proveedores' },
+  { id: 'resultados',  label: 'Resultados' },
+  { id: 'graficas',    label: 'Gráficas anuales' },
+  { id: 'importar',    label: 'Importar extracto' },
+];
+
+export default function ContabilidadView({ initialFacturas, initialGastos, initialProveedores }: Props) {
+  const [tab, setTab] = useState<Tab>('facturas');
+  const [facturas, setFacturas] = useState<Factura[]>(initialFacturas);
+  const [gastos, setGastos] = useState<Gasto[]>(initialGastos);
+  const [proveedores, setProveedores] = useState<Proveedor[]>(initialProveedores);
+  const [isPending, startTransition] = useTransition();
+
+  const snav: React.CSSProperties = {
+    background: '#fff', borderBottom: '1px solid #e0ddd5', display: 'flex', padding: '0 20px',
+  };
+  const stab = (active: boolean): React.CSSProperties => ({
+    height: 38, display: 'flex', alignItems: 'center', padding: '0 14px', fontSize: 12,
+    cursor: 'pointer', borderBottom: `2px solid ${active ? '#333' : 'transparent'}`,
+    color: active ? '#333' : '#a09e99', fontWeight: active ? 500 : 400, transition: 'color .15s, border-color .15s',
+    userSelect: 'none',
+  });
+
+  return (
+    <div>
+      {/* Subnav */}
+      <div style={snav}>
+        {TABS.map(t => (
+          <div key={t.id} style={stab(tab === t.id)} onClick={() => setTab(t.id)}>{t.label}</div>
+        ))}
+      </div>
+
+      {/* Content */}
+      <div style={{ padding: '18px 20px', maxWidth: 1320 }}>
+        {tab === 'facturas'    && <FacturasTab facturas={facturas} onUpdate={setFacturas} isPending={isPending} startTransition={startTransition} />}
+        {tab === 'gastos'      && <GastosTab gastos={gastos} proveedores={proveedores} onUpdateGastos={setGastos} onUpdateProveedores={setProveedores} isPending={isPending} startTransition={startTransition} />}
+        {tab === 'proveedores' && <ProveedoresTab proveedores={proveedores} gastos={gastos} onUpdate={setProveedores} isPending={isPending} startTransition={startTransition} />}
+        {tab === 'resultados'  && <ResultadosTab facturas={facturas} gastos={gastos} />}
+        {tab === 'graficas'    && <GraficasTab facturas={facturas} gastos={gastos} />}
+        {tab === 'importar'    && (
+          <div style={{ background: '#fff', border: '1px solid #e0ddd5', borderRadius: 6, padding: 36, textAlign: 'center' }}>
+            <div style={{ border: '1.5px dashed #c8c4bc', borderRadius: 6, padding: 36, color: '#a09e99', fontSize: 12, marginBottom: 18 }}>
+              <div style={{ fontSize: 30, marginBottom: 8 }}>↑</div>
+              <div style={{ fontSize: 13, color: '#6b6a66', marginBottom: 4 }}>Arrastra aquí el extracto bancario</div>
+              <div>CSV o Excel (.xlsx)</div>
+            </div>
+            <div style={{ fontSize: 11, color: '#a09e99', maxWidth: 420, margin: '0 auto', lineHeight: 1.7 }}>
+              El sistema detectará automáticamente ingresos y gastos y los cruzará con las facturas existentes.
+              Podrás revisar y confirmar cada asignación antes de guardar.{' '}
+              <em>(Pendiente de implementar en una iteración posterior.)</em>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

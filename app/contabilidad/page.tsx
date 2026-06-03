@@ -1,10 +1,19 @@
-export default function ContabilidadPage() {
+import { getFacturas } from '@/lib/data/facturas';
+import { getGastos } from '@/lib/data/gastos';
+import { getProveedores } from '@/lib/data/proveedores';
+import ContabilidadView from '@/components/modules/contabilidad/ContabilidadView';
+
+export default async function ContabilidadPage() {
+  const [facturas, gastos, proveedores] = await Promise.all([
+    getFacturas(),
+    getGastos(),
+    getProveedores(),
+  ]);
   return (
-    <div className="px-5 py-[18px] max-w-[1340px]">
-      <h1 className="text-lg font-semibold text-app-text mb-1">Contabilidad</h1>
-      <p className="text-[12px] text-app-text-faint">
-        Próximamente: facturas emitidas, gastos, proveedores, resultados y gráficas anuales.
-      </p>
-    </div>
+    <ContabilidadView
+      initialFacturas={facturas}
+      initialGastos={gastos}
+      initialProveedores={proveedores}
+    />
   );
 }
