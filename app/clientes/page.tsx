@@ -8,6 +8,7 @@ export default async function ClientesPage() {
       initialClientes={data.clientes}
       orgProyectos={data.org.projects}
       initialFacturas={data.contabilidad.facturas}
+      initialPresupuestos={data.presupuestos}
     />
   );
 }

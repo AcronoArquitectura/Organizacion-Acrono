@@ -1,13 +1,15 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import type { Cliente, Factura, Proyecto } from '@/lib/types';
+import type { Cliente, Factura, Presupuesto, Proyecto } from '@/lib/types';
 import { getCurrentPhase, getPhaseProgress } from '@/lib/utils/phases';
+import { honorariosConAjuste } from '@/lib/utils/coag';
 
 interface Props {
   cliente: Cliente;
   orgProyectos: Proyecto[];
   facturas: Factura[];
+  presupuestos: Presupuesto[];
   onEdit: () => void;
   onDelete: () => void;
   isPending: boolean;
@@ -22,21 +24,23 @@ const BADGE: Record<string, { color: string; bg: string; border: string; label: 
   potencial:  { color: '#b07a1e', bg: '#fbf3e0', border: '#e5c88a', label: 'Potencial' },
 };
 
-export default function ClientesFicha({ cliente, orgProyectos, facturas, onEdit, onDelete, isPending }: Props) {
+export default function ClientesFicha({ cliente, orgProyectos, facturas, presupuestos, onEdit, onDelete, isPending }: Props) {
   const router = useRouter();
 
-  const presup = cliente.proyectos.reduce((s, p) => s + (p.presup || 0), 0);
-  const cobr   = cliente.proyectos.reduce((s, p) => s + (p.cobr   || 0), 0);
+  const clientePresupuestos = cliente.nif
+    ? presupuestos.filter(p => p.estado === 'aceptado' && p.cliente.dni === cliente.nif)
+    : [];
+  const presup = clientePresupuestos.reduce((s, p) => s + honorariosConAjuste(p), 0);
 
-  // Suma facturas reales cuyo clienteNif coincide con el NIF del cliente
   const clienteFacturas = cliente.nif
     ? facturas.filter(f => f.clienteNif && f.clienteNif === cliente.nif)
     : [];
-  const fact = clienteFacturas.reduce((s, f) =>
-    s + f.lines.reduce((ls, l) => { const b = +l.base || 0; return ls + b + b * (+l.iva || 0) - b * (+l.irpf || 0); }, 0)
-  , 0);
-  const pend   = fact - cobr;
-  const result = presup - fact;
+  const facturaTotal = (f: Factura) =>
+    f.lines.reduce((s, l) => { const b = +l.base || 0; return s + b + b * (+l.iva || 0) - b * (+l.irpf || 0); }, 0);
+  const fact = clienteFacturas.reduce((s, f) => s + facturaTotal(f), 0);
+  const cobr = clienteFacturas.filter(f => f.estado === 'cobrada').reduce((s, f) => s + facturaTotal(f), 0);
+  const pend = clienteFacturas.filter(f => f.estado === 'pendiente').reduce((s, f) => s + facturaTotal(f), 0);
+  const result = clientePresupuestos.length > 0 ? cobr - pend : Math.max(0, cobr - pend);
 
   const badge = BADGE[cliente.estado] ?? BADGE.potencial;
 
