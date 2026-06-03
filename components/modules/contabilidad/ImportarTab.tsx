@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import type { Factura, Gasto, Proveedor, Cliente } from '@/lib/types';
 import { fmt, recBase, recTotal } from './calculos';
-import { importarDatos } from './actions';
+import { importarDatos, repararDatos } from './actions';
 
 interface Props {
   onImport: (result: { facturas: Factura[]; gastos: Gasto[]; proveedores: Proveedor[] }) => void;
@@ -60,6 +60,8 @@ export default function ImportarTab({ onImport }: Props) {
   const [previewTab, setPreviewTab] = useState<PreviewTab>('facturas');
   const [error, setError] = useState('');
   const [added, setAdded] = useState<{ facturas: number; gastos: number; proveedores: number; clientes: number } | null>(null);
+  const [repairing, setRepairing] = useState(false);
+  const [repairMsg, setRepairMsg] = useState('');
 
   function handleLoad() {
     const file = fileRef.current?.files?.[0];
@@ -135,6 +137,19 @@ export default function ImportarTab({ onImport }: Props) {
 
   // ── Idle state ──────────────────────────────────────────────────────────────
 
+  async function handleRepair() {
+    setRepairing(true);
+    setRepairMsg('');
+    try {
+      const result = await repararDatos();
+      setRepairMsg(`Datos reparados: ${result.clientes} clientes normalizados. Recarga /clientes.`);
+    } catch {
+      setRepairMsg('Error al reparar. Inténtalo de nuevo.');
+    } finally {
+      setRepairing(false);
+    }
+  }
+
   if (stage === 'idle') {
     return (
       <div style={{ background: '#fff', border: '1px solid #e0ddd5', borderRadius: 6, padding: 32, maxWidth: 560 }}>
@@ -153,6 +168,22 @@ export default function ImportarTab({ onImport }: Props) {
           <button onClick={handleLoad} style={btnDark}>Cargar y previsualizar</button>
         </div>
         {error && <div style={{ marginTop: 12, fontSize: 12, color: '#c0392b' }}>{error}</div>}
+
+        <div style={{ marginTop: 28, paddingTop: 20, borderTop: '1px solid #f0ede8' }}>
+          <div style={{ fontSize: 11, color: '#a09e99', marginBottom: 10 }}>
+            Si <strong>/clientes</strong> da un error de "Application error", pulsa este botón para reparar
+            los datos existentes en Dropbox (garantiza que todos los clientes tienen el campo <code>proyectos</code>).
+          </div>
+          <button onClick={handleRepair} disabled={repairing}
+            style={{ ...btnStyle, fontSize: 11, opacity: repairing ? 0.6 : 1 }}>
+            {repairing ? 'Reparando…' : 'Reparar datos existentes'}
+          </button>
+          {repairMsg && (
+            <div style={{ marginTop: 8, fontSize: 11, color: repairMsg.startsWith('Error') ? '#c0392b' : '#2e7d32' }}>
+              {repairMsg}
+            </div>
+          )}
+        </div>
       </div>
     );
   }

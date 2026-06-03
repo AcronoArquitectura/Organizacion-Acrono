@@ -4,7 +4,7 @@ import { getFacturas, saveFacturas } from '@/lib/data/facturas';
 import { getGastos, saveGastos } from '@/lib/data/gastos';
 import { getProveedores, saveProveedores } from '@/lib/data/proveedores';
 import { readAllData, writeAllData } from '@/lib/data/storage';
-import type { Factura, FacturaLine, Gasto, Proveedor, Cliente } from '@/lib/types';
+import type { Factura, FacturaLine, Gasto, Proveedor, Cliente, ProyectoCliente } from '@/lib/types';
 import { guessCategoria } from './calculos';
 
 // ── Facturas ──────────────────────────────────────────────────────────────────
@@ -74,6 +74,44 @@ export async function deleteProveedor(id: string): Promise<Proveedor[]> {
 }
 
 // ── Importación de datos históricos ──────────────────────────────────────────
+
+// Garantiza que un cliente tenga todos los campos requeridos por ClientesFicha/ClientesResumen.
+// Necesario porque el JSON histórico de acrono.html puede no tener el campo `proyectos`.
+function normalizeCliente(c: unknown): Cliente {
+  const raw = c as Record<string, unknown>;
+  return {
+    id:     String(raw.id     ?? ''),
+    nombre: String(raw.nombre ?? ''),
+    tipo:   raw.tipo === 'Empresa' ? 'Empresa' : 'Particular',
+    estado: (['activo', 'finalizado', 'potencial'].includes(raw.estado as string)
+              ? raw.estado : 'activo') as Cliente['estado'],
+    desde:  String(raw.desde  ?? ''),
+    nif:    String(raw.nif    ?? ''),
+    tel:    String(raw.tel    ?? ''),
+    email:  String(raw.email  ?? ''),
+    dir1:   String(raw.dir1   ?? ''),
+    dir2:   String(raw.dir2   ?? ''),
+    dir3:   String(raw.dir3   ?? ''),
+    nota:   String(raw.nota   ?? ''),
+    proyectos: Array.isArray(raw.proyectos)
+      ? (raw.proyectos as Record<string, unknown>[]).map((p): ProyectoCliente => ({
+          ref:   String(p.ref    ?? ''),
+          presup: Number(p.presup ?? 0),
+          fact:   Number(p.fact   ?? 0),
+          cobr:   Number(p.cobr   ?? 0),
+        }))
+      : [],
+  };
+}
+
+// Repara clientes ya existentes en Dropbox (proyectos: undefined → []).
+// Usar cuando /clientes da un error de "Cannot read properties of undefined (reading 'reduce')".
+export async function repararDatos(): Promise<{ clientes: number }> {
+  const allData = await readAllData();
+  const repaired = allData.clientes.map(normalizeCliente);
+  await writeAllData({ ...allData, clientes: repaired });
+  return { clientes: repaired.length };
+}
 
 // Normaliza una factura del JSON histórico al formato actual del tipo Factura.
 // El JSON de acrono.html usa nombres de campo distintos en algunos casos:
@@ -153,7 +191,7 @@ export async function importarDatos(payload: ImportPayload): Promise<ImportResul
 
   const mergedData = {
     ...allData,
-    clientes: [...allData.clientes, ...newClientes],
+    clientes: [...allData.clientes, ...newClientes].map(normalizeCliente),
     contabilidad: {
       facturas:    [...allData.contabilidad.facturas,    ...newFacturas],
       gastos:      [...allData.contabilidad.gastos,      ...newGastos],
