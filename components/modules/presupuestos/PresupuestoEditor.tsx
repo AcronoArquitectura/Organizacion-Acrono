@@ -6,7 +6,7 @@ import {
   FL_OPTS, FT_VIV, FC_VIV, USOS_OTROS, USOS_URB, CAPS_EDIF, CAPS_URB,
   capsFor, plantillaDef, fcSugerido, EXTRAS_LIST, OBSERVACIONES_SEED,
   mcBase, rowEurM2, pemTotal, m2Totales, escala,
-  doHoras, doEurMes, honorariosLineas, honorariosBase,
+  doHoras, doEurMes, honorariosLineas, honorariosBase, costesTotales,
 } from '@/lib/utils/coag';
 import PresupuestoSummary from './PresupuestoSummary';
 import { openPresupuestoPDF } from './presupuestoPDF';
@@ -462,6 +462,63 @@ export default function PresupuestoEditor({ presupuesto, clientes, onSave, onCan
                   )}
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Panel Costes totales */}
+          <div style={S.panel}>
+            <div style={S.title}>Estimación de costes totales</div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: '#6b6a66', marginBottom: 6 }}>Parámetros editables</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
+                {([
+                  ['Ajuste mercado %', 'ajusteMercadoPct'],
+                  ['GG + BI %', 'ggbiPct'],
+                  ['IVA construcción %', 'ivaConstrPct'],
+                  ['Licencia obra % (PEM)', 'licenciaObraPct'],
+                  ['1ª ocupación % (PEM)', 'primeraOcupPct'],
+                  ['Honorarios técnico (s/IVA)', 'honorariosTecnico'],
+                  ['Visados (s/IVA)', 'visados'],
+                  ['Fianzas', 'fianzas'],
+                  ['Estudio geotécnico (s/IVA)', 'geotecnico'],
+                  ['Impuestos, notaría y registro', 'impuestos'],
+                ] as const).map(([lbl, key]) => (
+                  <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #f4f2ed' }}>
+                    <span style={{ fontSize: 11, color: '#6b6a66' }}>{lbl}</span>
+                    <input type="number" step="0.01"
+                      style={{ width: 80, height: 26, padding: '0 6px', border: '1px solid #c8c4bc', borderRadius: 4, fontSize: 11, fontFamily: 'inherit', textAlign: 'right', outline: 'none' }}
+                      value={p.costes[key]} onChange={e => upd({ costes: { ...p.costes, [key]: +e.target.value } })} />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{ borderTop: '1px solid #e0ddd5', paddingTop: 10 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: '#6b6a66', marginBottom: 6 }}>Resultado</div>
+              {(() => {
+                const ct = costesTotales(p);
+                return (
+                  <>
+                    {ct.filas.map(([lbl, val, est]) => (
+                      <div key={lbl} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #f4f2ed', fontSize: 12 }}>
+                        <span style={{ color: '#6b6a66', fontSize: 11 }}>{lbl} {est && <span style={{ fontSize: 10, fontStyle: 'italic', color: '#a09e99' }}>Est.</span>}</span>
+                        <span style={{ fontVariantNumeric: 'tabular-nums' }}>{Math.round(val).toLocaleString('es-ES')} €</span>
+                      </div>
+                    ))}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 14, fontWeight: 700 }}>
+                      <span>TOTAL estimado</span>
+                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{Math.round(ct.total).toLocaleString('es-ES')} €</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#6b6a66', padding: '2px 0' }}>
+                      <span>Coste total obra</span>
+                      <span>{Math.round(ct.costeObra).toLocaleString('es-ES')} €</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#6b6a66', padding: '2px 0' }}>
+                      <span>m² totales · coste/m²</span>
+                      <span>{ct.m2} m² · {Math.round(ct.costeM2).toLocaleString('es-ES')} €</span>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
 

@@ -330,6 +330,48 @@ export function honorariosConAjuste(p: Presupuesto): number {
   return honorariosBase(p) * (1 + (+p.ajustePct || 0) / 100);
 }
 
+// ── Estimación de costes totales (portado de presupuestos.html línea 348) ─────
+
+export interface CostesResult {
+  filas: [string, number, boolean][];
+  total: number;
+  costeObra: number;
+  m2: number;
+  costeM2: number;
+  pem: number;
+}
+
+export function costesTotales(p: Presupuesto): CostesResult {
+  const c = p.costes, pem = pemTotal(p);
+  const ajuste    = pem * c.ajusteMercadoPct / 100;
+  const ggbi      = (pem + ajuste) * c.ggbiPct / 100;
+  const ivaC      = (pem + ajuste + ggbi) * c.ivaConstrPct / 100;
+  const costeObra = pem + ajuste + ggbi + ivaC;
+  const honArq    = honorariosBase(p) * 1.21;
+  const honTec    = (+c.honorariosTecnico || 0) * 1.21;
+  const visados   = (+c.visados || 0) * 1.21;
+  const licObra   = pem * c.licenciaObraPct / 100;
+  const geo       = (+c.geotecnico || 0) * 1.21;
+  const primOcup  = pem * c.primeraOcupPct / 100;
+  const filas: [string, number, boolean][] = [
+    ['Proyecto PEM', pem, false],
+    ['Ajuste a precios de mercado (' + c.ajusteMercadoPct + '%)', ajuste, true],
+    ['Gastos Generales + Beneficio Industrial (' + c.ggbiPct + '%)', ggbi, true],
+    ['IVA de la construcción (' + c.ivaConstrPct + '%)', ivaC, false],
+    ['Honorarios arquitectos con IVA del 21% (estimación con ' + (+p.duracionMeses || 0) + ' meses de obra)', honArq, true],
+    ['Honorarios arquitectos técnicos con IVA del 21%', honTec, true],
+    ['Visados por COA con IVA del 21%', visados, true],
+    ['Licencia de obra (' + c.licenciaObraPct + '%)', licObra, true],
+    ['Fianzas', +c.fianzas || 0, true],
+    ['Estudio geotécnico con IVA del 21%', geo, true],
+    ['Licencia de primera ocupación (' + c.primeraOcupPct + '%)', primOcup, true],
+    ['Impuestos, Notaría y registro', +c.impuestos || 0, true],
+  ];
+  const total = filas.reduce((s, f) => s + f[1], 0);
+  const m2 = m2Totales(p);
+  return { filas, total, costeObra, m2, costeM2: m2 ? total / m2 : 0, pem };
+}
+
 export function calcPartidasDef(p: Presupuesto): Partida[] {
   const L = honorariosLineas(p);
   const get = (k: string) => (L.find(l => l.key === k) ?? { importe: 0 }).importe;
