@@ -42,7 +42,9 @@ export default function FacturaModal({ factura, facturas, onSave, onDelete, onCl
   const [venc, setVenc] = useState(factura?.vencimiento ?? addOneMonth(hoy));
   const [cliente, setCliente] = useState(factura?.cliente === '—' ? '' : (factura?.cliente ?? ''));
   const [nif, setNif] = useState(factura?.clienteNif ?? '');
-  const [dir, setDir] = useState(factura?.clienteDir ?? '');
+  const [dirCalle, setDirCalle] = useState(factura?.clienteDireccionCalle ?? '');
+  const [dirCPCiudad, setDirCPCiudad] = useState(factura?.clienteDireccionCPCiudad ?? '');
+  const [dirProvincia, setDirProvincia] = useState(factura?.clienteDireccionProvincia ?? '');
   const [ref, setRef] = useState(factura?.refPresupuesto ?? '');
   const [pie, setPie] = useState(factura?.pieTexto ?? PIE_LEGAL_DEFAULT);
   const [concepto, setConcepto] = useState(factura?.concepto ?? '');
@@ -83,7 +85,8 @@ export default function FacturaModal({ factura, facturas, onSave, onDelete, onCl
       id: factura?.id ?? 'f_' + Date.now(),
       numero, fecha, vencimiento: venc,
       cliente: cliente.trim() || '—', clienteNif: nif.trim(),
-      clienteDir: dir.trim(), refPresupuesto: ref.trim(), pieTexto: pie.trim(),
+      clienteDireccionCalle: dirCalle.trim(), clienteDireccionCPCiudad: dirCPCiudad.trim(), clienteDireccionProvincia: dirProvincia.trim(),
+      refPresupuesto: ref.trim(), pieTexto: pie.trim(),
       concepto: concepto.trim(), estado, nota: nota.trim(), tags,
       lines: parsedLines,
     };
@@ -143,8 +146,9 @@ export default function FacturaModal({ factura, facturas, onSave, onDelete, onCl
             </div>
           </div>
           <div style={FG}><label style={LBL}>Dirección</label>
-            <textarea style={{ width: '100%', minHeight: 54, padding: '8px 10px', border: '1px solid #c8c4bc', borderRadius: 6, fontFamily: 'inherit', fontSize: 12, color: '#333', resize: 'vertical', outline: 'none' }}
-              value={dir} onChange={e => setDir(e.target.value)} placeholder="C/ San Francisco, 56, 5B&#10;38001 Santa Cruz de Tenerife" />
+            <input style={{ ...INP, marginBottom: 6 }} value={dirCalle}     onChange={e => setDirCalle(e.target.value)}     placeholder="Calle y número" />
+            <input style={{ ...INP, marginBottom: 6 }} value={dirCPCiudad}  onChange={e => setDirCPCiudad(e.target.value)}  placeholder="CP y ciudad" />
+            <input style={INP}                          value={dirProvincia} onChange={e => setDirProvincia(e.target.value)} placeholder="Provincia" />
           </div>
 
           <div style={SEC}>Conceptos facturables</div>

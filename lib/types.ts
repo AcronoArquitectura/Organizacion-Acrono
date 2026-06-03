@@ -65,9 +65,9 @@ export interface Cliente {
   nif: string;
   tel: string;
   email: string;
-  dir1: string;
-  dir2: string;
-  dir3: string;
+  direccionCalle: string;
+  direccionCPCiudad: string;
+  direccionProvincia: string;
   nota: string;
   proyectos: ProyectoCliente[];
 }
@@ -88,7 +88,9 @@ export interface Factura {
   vencimiento: string;  // 'YYYY-MM-DD'
   cliente: string;
   clienteNif: string;
-  clienteDir: string;
+  clienteDireccionCalle: string;
+  clienteDireccionCPCiudad: string;
+  clienteDireccionProvincia: string;
   refPresupuesto: string;
   pieTexto: string;
   concepto: string;

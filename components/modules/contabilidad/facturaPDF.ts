@@ -18,7 +18,8 @@ function buildHTML(f: Factura, logoUrl: string): string {
   const ivaTot  = f.lines.reduce((s, l) => s + (+l.base || 0) * (+l.iva || 0), 0);
   const retTot  = f.lines.reduce((s, l) => s + (+l.base || 0) * (+l.irpf || 0), 0);
   const total   = baseTot + ivaTot - retTot;
-  const destDir = esc(f.clienteDir ?? '').replace(/\n/g, '<br>');
+  const destDir = [f.clienteDireccionCalle, f.clienteDireccionCPCiudad, f.clienteDireccionProvincia]
+    .filter(Boolean).map(esc).join('<br>');
 
   const rows = f.lines.map((l, i) => `<tr>
     <td class="desc">${esc(l.desc || (i === 0 ? f.concepto : '')) || '&nbsp;'}</td>

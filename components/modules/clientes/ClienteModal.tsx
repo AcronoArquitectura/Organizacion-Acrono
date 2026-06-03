@@ -13,7 +13,7 @@ interface Props {
 
 const EMPTY: Omit<Cliente, 'id'> = {
   nombre: '', tipo: 'Particular', estado: 'activo', desde: '',
-  nif: '', tel: '', email: '', dir1: '', dir2: '', dir3: '', nota: '', proyectos: [],
+  nif: '', tel: '', email: '', direccionCalle: '', direccionCPCiudad: '', direccionProvincia: '', nota: '', proyectos: [],
 };
 
 const INP: React.CSSProperties = {
@@ -123,9 +123,9 @@ export default function ClienteModal({ cliente, orgProyectos, onSave, onClose, i
             {/* Dirección */}
             <div style={FG}>
               <label style={LBL}>Dirección</label>
-              <input placeholder="Calle y número" style={{ ...INP, marginBottom: 6 }} value={form.dir1} onChange={(e) => set('dir1', e.target.value)} />
-              <input placeholder="CP y ciudad"    style={{ ...INP, marginBottom: 6 }} value={form.dir2} onChange={(e) => set('dir2', e.target.value)} />
-              <input placeholder="Provincia"       style={INP}                         value={form.dir3} onChange={(e) => set('dir3', e.target.value)} />
+              <input placeholder="Calle y número" style={{ ...INP, marginBottom: 6 }} value={form.direccionCalle}      onChange={(e) => set('direccionCalle', e.target.value)} />
+              <input placeholder="CP y ciudad"    style={{ ...INP, marginBottom: 6 }} value={form.direccionCPCiudad}  onChange={(e) => set('direccionCPCiudad', e.target.value)} />
+              <input placeholder="Provincia"       style={INP}                         value={form.direccionProvincia}  onChange={(e) => set('direccionProvincia', e.target.value)} />
             </div>
 
             {/* Proyectos vinculados */}

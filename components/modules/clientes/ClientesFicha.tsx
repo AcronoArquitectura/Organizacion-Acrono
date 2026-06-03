@@ -44,7 +44,7 @@ export default function ClientesFicha({ cliente, orgProyectos, onEdit, onDelete,
     { k: 'NIF/CIF',   v: cliente.nif },
     { k: 'Teléfono',  v: cliente.tel },
     { k: 'Email',     v: cliente.email },
-    { k: 'Dirección', v: [cliente.dir1, cliente.dir2, cliente.dir3].filter(Boolean).join(', ') },
+    { k: 'Dirección', v: [cliente.direccionCalle, cliente.direccionCPCiudad, cliente.direccionProvincia].filter(Boolean).join(', ') },
   ].filter((r) => r.v);
 
   return (
