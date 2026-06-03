@@ -8,6 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "jspdf": "^2.5.1",
     "next": "^15",
     "react": "^19",
     "react-dom": "^19"

@@ -5,6 +5,7 @@ import type { Proyecto, Author, Phase, Meeting } from '@/lib/types';
 import {
   PHASE_DEFS, DEFAULT_MEETING_TEMPLATE, getMondayOfWeek, addWeeks, dateToInput,
 } from '@/lib/utils/gantt';
+import { exportSingleProyectoPDF } from './orgPDF';
 
 interface PhaseEdit {
   key: string;
@@ -282,10 +283,16 @@ export default function ProyectoModal({ proyecto, authors, onSave, onDelete, onC
         {/* Actions */}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 18, paddingTop: 14, borderTop: '1px solid #e0ddd5' }}>
           {!isNew && (
-            <button onClick={() => { if (confirm('¿Eliminar proyecto?')) onDelete(proyecto!.id); }}
-              style={{ ...btnDanger, marginRight: 'auto' }} disabled={isPending}>
-              Eliminar
-            </button>
+            <>
+              <button onClick={() => { if (confirm('¿Eliminar proyecto?')) onDelete(proyecto!.id); }}
+                style={btnDanger} disabled={isPending}>
+                Eliminar
+              </button>
+              <button onClick={async () => { await exportSingleProyectoPDF(proyecto!, authors); }}
+                style={{ ...btnStyle, marginRight: 'auto' }} disabled={isPending}>
+                ↓ PDF
+              </button>
+            </>
           )}
           <button onClick={onClose} style={btnStyle}>Cancelar</button>
           <button onClick={handleSave} style={btnDark} disabled={isPending}>Guardar</button>

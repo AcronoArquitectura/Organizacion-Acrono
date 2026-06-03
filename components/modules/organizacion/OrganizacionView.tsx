@@ -15,6 +15,10 @@ import {
   upsertObra, deleteObra, reorderObras,
   updateAuthors,
 } from '@/lib/actions/organizacion';
+import {
+  exportGeneralProyectosPDF,
+  exportGeneralObrasPDF,
+} from './orgPDF';
 
 type Tab = 'org' | 'proyectos' | 'obras';
 
@@ -94,6 +98,11 @@ export default function OrganizacionView({ initialOrg }: Props) {
     startTransition(async () => { applyOrg(await updateAuthors(a)); setShowAuthors(false); });
   }, [applyOrg]);
 
+  const handleExportPDF = useCallback(async () => {
+    if (tab === 'proyectos') await exportGeneralProyectosPDF(projects, authors, weeks);
+    else if (tab === 'obras') await exportGeneralObrasPDF(obras, authors, weeks);
+  }, [tab, projects, obras, authors, weeks]);
+
   const fmtOpt: Intl.DateTimeFormatOptions = { month: 'short', year: 'numeric' };
   const windowLabel = `${weeks[0].toLocaleDateString('es-ES', fmtOpt)} → ${weeks[weeks.length - 1].toLocaleDateString('es-ES', fmtOpt)}`;
 
@@ -142,6 +151,9 @@ export default function OrganizacionView({ initialOrg }: Props) {
         <button onClick={() => setShowAuthors(true)} style={btnStyle}>Autores</button>
         <button onClick={() => setExtraWeeks(ew => ew + 26)} style={btnStyle}>+ 6 meses →</button>
         {extraWeeks > 0 && <button onClick={() => setExtraWeeks(0)} style={btnStyle}>↺ Vista</button>}
+        {(tab === 'proyectos' || tab === 'obras') && (
+          <button onClick={handleExportPDF} style={btnStyle} disabled={isPending}>↓ PDF</button>
+        )}
         {tab === 'proyectos' && (
           <button onClick={() => setEditProyectoId('new')} style={btnDark}>+ Proyecto</button>
         )}
