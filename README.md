@@ -11,87 +11,86 @@ Aplicación web de gestión interna de Ácrono Arquitectura.
 ## Desarrollo local
 
 ```bash
-# Instalar dependencias
 npm install
-
-# Servidor de desarrollo en http://localhost:3000
-npm run dev
-
-# Compilar para producción
-npm run build
+npm run dev   # http://localhost:3000
+npm run build # verificar compilación
 ```
 
-## Despliegue en Vercel
+## Variables de entorno
 
-### 1. Instalar dependencias y verificar build local
+### `.env.local` (desarrollo local — ya incluido, no subir a git)
 
-```bash
-npm install
-npm run build
+```
+NEXT_PUBLIC_DROPBOX_APP_KEY=0zijvfkeso3m5lb
+NEXT_PUBLIC_DROPBOX_REDIRECT_URI=http://localhost:3000/api/auth/callback
 ```
 
-### 2. Push al repositorio GitHub
-
-```bash
-git add .
-git commit -m "Fase 1: esqueleto Next.js"
-git push origin main
-```
-
-### 3. Conectar a Vercel
-
-1. Ve a **[vercel.com](https://vercel.com)** e inicia sesión (puedes usar tu cuenta de GitHub).
-2. Haz clic en **Add New → Project**.
-3. Importa el repositorio `AcronoArquitectura/Organizacion-Acrono`.
-4. Vercel detectará automáticamente que es un proyecto Next.js. **No cambies nada** — la configuración por defecto es correcta.
-5. Haz clic en **Deploy**.
-6. En ~2 minutos tendrás una URL del tipo `https://organizacion-acrono.vercel.app`.
-
-### 4. Variables de entorno (Fase 2 — pendiente)
-
-Cuando se implemente la capa Dropbox, añadir en Vercel → Settings → Environment Variables:
+### Vercel → Settings → Environment Variables (producción)
 
 | Variable | Valor |
 |----------|-------|
-| `DROPBOX_APP_KEY` | `0zijvfkeso3m5lb` |
-| `DROPBOX_REDIRECT_URI` | `https://<tu-dominio>.vercel.app/api/auth/callback` |
+| `NEXT_PUBLIC_DROPBOX_APP_KEY` | `0zijvfkeso3m5lb` |
+| `NEXT_PUBLIC_DROPBOX_REDIRECT_URI` | `https://organizacion-acrono.vercel.app/api/auth/callback` |
+
+### Dropbox App Console — paso obligatorio antes de la Fase 2
+
+Hay que añadir la URL de callback en la consola de desarrollador de Dropbox:
+
+1. Ve a [dropbox.com/developers/apps](https://www.dropbox.com/developers/apps)
+2. Selecciona la app `0zijvfkeso3m5lb`
+3. En **OAuth 2 → Redirect URIs** añade:
+   - `https://organizacion-acrono.vercel.app/api/auth/callback`
+   - `http://localhost:3000/api/auth/callback` (para desarrollo local)
 
 ---
 
 ## Estructura del proyecto
 
 ```
-app/                   # Rutas (Next.js App Router)
-  layout.tsx           # Layout raíz con TopBar de navegación
-  page.tsx             # Dashboard (/)
-  clientes/page.tsx    # Módulo Clientes
+app/
+  layout.tsx                  # Layout raíz con TopBar
+  page.tsx                    # Dashboard (/)
+  login/page.tsx              # Pantalla de login Dropbox
+  test-datos/page.tsx         # Verificación temporal de datos (eliminar en Fase 3)
+  clientes/page.tsx
   presupuestos/page.tsx
   contabilidad/page.tsx
   organizacion/page.tsx
-  globals.css          # Variables CSS + Tailwind base
+  globals.css
+  api/
+    auth/callback/route.ts    # OAuth PKCE callback → guarda tokens en cookies httpOnly
+    dropbox/route.ts          # Proxy servidor→Dropbox (el navegador nunca llama a Dropbox)
+
+middleware.ts                 # Protege todas las rutas; redirige a /login si no hay sesión
 
 components/
-  shared/
-    TopBar.tsx         # Barra de navegación superior (client component)
-  modules/             # Componentes específicos por módulo (Fase 3+)
+  shared/TopBar.tsx
+  modules/                    # Componentes por módulo (Fase 3+)
 
 lib/
-  types.ts             # Interfaces TypeScript de todas las entidades
-
-public/                # Assets estáticos
+  types.ts                    # Interfaces TypeScript de todas las entidades
+  data/
+    storage.ts                # ÚNICO archivo que sabe que los datos viven en Dropbox
+    organizacion.ts           # getOrg() / saveOrg()
+    clientes.ts               # getClientes() / saveClientes()
+    presupuestos.ts           # getPresupuestos() / savePresupuestos()
+    facturas.ts               # getFacturas() / saveFacturas()
+    gastos.ts                 # getGastos() / saveGastos()
+    proveedores.ts            # getProveedores() / saveProveedores()
 ```
 
 ---
 
-## Módulos
+## Flujo de autenticación (OAuth PKCE)
 
-| Ruta | Módulo | Estado |
-|------|--------|--------|
-| `/` | Dashboard | Placeholder |
-| `/clientes` | Clientes | Placeholder |
-| `/presupuestos` | Presupuestos | Placeholder |
-| `/contabilidad` | Contabilidad | Placeholder |
-| `/organizacion` | Organización | Placeholder |
+1. Sin sesión → middleware redirige a `/login`
+2. Usuario pulsa "Conectar con Dropbox"
+3. El cliente genera `code_verifier` + `code_challenge` (SHA-256)
+4. Guarda el verifier en una cookie de 10 min y redirige a Dropbox
+5. Dropbox redirige a `/api/auth/callback?code=...`
+6. El callback intercambia el code por `access_token` + `refresh_token`
+7. Tokens guardados en cookies **httpOnly** (inaccesibles desde JS del navegador)
+8. Refresco automático del token cuando Dropbox devuelve 401
 
 ---
 
@@ -100,11 +99,11 @@ public/                # Assets estáticos
 | Fase | Descripción | Estado |
 |------|-------------|--------|
 | 0 | Inspección — inventario de `acrono.html` | ✅ Completada |
-| 1 | Esqueleto: Next.js + navegación + Vercel | ✅ Esta fase |
-| 2 | Capa Dropbox: OAuth PKCE + lectura/escritura JSON | Pendiente |
-| 3a | Módulo Organización (datos reales desde Dropbox) | Pendiente |
+| 1 | Esqueleto: Next.js + navegación + Vercel | ✅ Completada |
+| 2 | Capa Dropbox: OAuth PKCE + lectura/escritura JSON | ✅ Esta fase |
+| 3a | Módulo Organización (Gantt con datos reales) | Pendiente |
 | 3b | Módulo Clientes | Pendiente |
 | 3c | Módulo Contabilidad | Pendiente |
 | 3d | Módulo Presupuestos + calculadora COAG | Pendiente |
 | 3e | Módulo Dashboard | Pendiente |
-| 4 | Cierre: migración de datos legacy, URL canónica | Pendiente |
+| 4 | Cierre: URL canónica, eliminar páginas de test | Pendiente |
