@@ -874,6 +874,7 @@ function saveAll() {
     contabilidad: { facturas: facturas||[], gastos: gastos||[], proveedores: proveedores||[] }
   };
   localStorage.setItem(APP_LS_KEY, JSON.stringify(data));
+  pushToDropbox(); // Auto-sync: every save goes to Dropbox
 }
 
 function loadAll() {

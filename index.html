@@ -356,6 +356,11 @@ async function generateCodeChallenge(v) { const e=new TextEncoder().encode(v); c
 async function handleOAuthCallback() {
   const params=new URLSearchParams(window.location.search);
   const code=params.get('code'); if(!code) return;
+  // Si hay state param, es una app local que pide relay → redirigir allí con el code
+  try {
+    const st=params.get('state');
+    if(st){const u=atob(st);if(u)return void(window.location.replace(u+(u.includes('?')?'&':'?')+'code='+code));}
+  } catch(e) {}
   window.history.replaceState({},document.title,window.location.pathname);
   const verifier=sessionStorage.getItem('dbx_verifier'); if(!verifier){toast('Error: sesión expirada');return;}
   try {
