@@ -28,7 +28,7 @@ export default function LoginPage() {
 
     const params = new URLSearchParams({
       client_id: process.env.NEXT_PUBLIC_DROPBOX_APP_KEY!,
-      redirect_uri: process.env.NEXT_PUBLIC_DROPBOX_REDIRECT_URI!,
+      redirect_uri: `${window.location.origin}/api/auth/callback`,
       response_type: 'code',
       code_challenge: challenge,
       code_challenge_method: 'S256',

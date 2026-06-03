@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
       code,
       grant_type: 'authorization_code',
       client_id: process.env.NEXT_PUBLIC_DROPBOX_APP_KEY!,
-      redirect_uri: process.env.NEXT_PUBLIC_DROPBOX_REDIRECT_URI!,
+      redirect_uri: new URL('/api/auth/callback', req.url).href,
       code_verifier: verifier,
     }),
   });
