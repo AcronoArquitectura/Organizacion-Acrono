@@ -17,12 +17,14 @@ export default function PresupuestosView({ initialPresupuestos, clientes }: Prop
   const [editing, setEditing] = useState<Presupuesto | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  const isNew = editing ? !presupuestos.find(p => p.id === editing.id) : false;
+
   function openNew() {
     setEditing(nuevoPresupuestoObj(presupuestos));
   }
 
   function openEdit(p: Presupuesto) {
-    setEditing({ ...p });
+    setEditing(JSON.parse(JSON.stringify(p)));
   }
 
   function handleSave(p: Presupuesto) {
@@ -38,6 +40,7 @@ export default function PresupuestosView({ initialPresupuestos, clientes }: Prop
     startTransition(async () => {
       const updated = await deletePresupuesto(id);
       setPresupuestos(updated);
+      setEditing(null);
     });
   }
 
@@ -46,7 +49,9 @@ export default function PresupuestosView({ initialPresupuestos, clientes }: Prop
       <PresupuestoEditor
         presupuesto={editing}
         clientes={clientes}
+        isNew={isNew}
         onSave={handleSave}
+        onDelete={handleDelete}
         onCancel={() => setEditing(null)}
         isPending={isPending}
       />

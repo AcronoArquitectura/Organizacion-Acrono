@@ -45,6 +45,9 @@ Tratamos la información facilitada con el fin de prestar el servicio solicitado
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// fmt: 2 decimales (igual que presupuestos.html)
+const fmt = (n: number) => (Math.round((+n || 0) * 100) / 100).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+// fmt0: 0 decimales para totales grandes
 const fmt0 = (n: number) => Math.round(n).toLocaleString('es-ES') + ' €';
 const esc = (s: string) => (s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const mdBold = (s: string) => esc(s).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
@@ -78,7 +81,7 @@ function pemCalcHTML(p: Presupuesto): string {
     coef = `<div class="coef"><div>Mc base = <b>${fmt0(mcBase(p))}/m²</b></div>${capCoef(p) !== 1 ? `<div>Coef. capítulos = ×${capCoef(p).toFixed(3)}</div>` : ''}</div>`;
   }
   const rows = p.pemRows.map(r =>
-    `<tr><td class="c">${r.m2}</td><td>${esc(r.concepto)}</td><td class="r">${fmt0(rowEurM2(p, r))}</td><td class="r">${fmt0((r.m2 || 0) * rowEurM2(p, r))}</td></tr>`
+    `<tr><td class="c">${r.m2}</td><td>${esc(r.concepto)}</td><td class="r">${fmt(rowEurM2(p, r))}</td><td class="r">${fmt0((r.m2 || 0) * rowEurM2(p, r))}</td></tr>`
   ).join('');
   return `<table class="t">
     <tr class="th"><td class="c">Superficie [m²]</td><td>Concepto</td><td class="r">Precio [€/m²]</td><td class="r">Precio [€]</td></tr>

@@ -1,475 +1,589 @@
 'use client';
 
 import { useState } from 'react';
-import type { Presupuesto, Cliente, PemRow } from '@/lib/types';
+import type { Presupuesto, Cliente, PemRow, Partida } from '@/lib/types';
 import {
-  FL_OPTS, FT_VIV, FC_VIV, USOS_OTROS, USOS_URB, CAPS_EDIF, CAPS_URB,
-  capsFor, plantillaDef, fcSugerido, EXTRAS_LIST, OBSERVACIONES_SEED,
-  mcBase, rowEurM2, pemTotal, m2Totales, escala,
-  doHoras, doEurMes, honorariosLineas, honorariosBase, costesTotales,
+  FL_OPTS, FT_VIV, FC_VIV, USOS_OTROS, USOS_URB, OBSERVACIONES_SEED,
+  capsFor, plantillaDef, mcBase, rowEurM2, pemTotal, m2Totales,
+  escala, doEurMes, honorariosLineas, honorariosBase, costesTotales,
+  calcPartidasDef,
 } from '@/lib/utils/coag';
 import PresupuestoSummary from './PresupuestoSummary';
 import { openPresupuestoPDF } from './presupuestoPDF';
+import { useRouter } from 'next/navigation';
+
+// ── fmt 2 decimales (igual que presupuestos.html) ─────────────────────────────
+const fmt = (n: number) =>
+  (Math.round((+n || 0) * 100) / 100).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+
+// ── Estilos compartidos ───────────────────────────────────────────────────────
+const P = {
+  panel:  { background: '#fff', border: '1px solid #e0ddd5', borderRadius: 6, padding: '15px 16px', marginBottom: 14 } as React.CSSProperties,
+  title:  { fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#a09e99', marginBottom: 12, fontWeight: 500 },
+  inp:    { height: 30, padding: '0 8px', border: '1px solid #c8c4bc', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none', background: '#fff', color: '#333', width: '100%' } as React.CSSProperties,
+  lbl:    { display: 'block', fontSize: 10, letterSpacing: '.05em', textTransform: 'uppercase' as const, color: '#a09e99', marginBottom: 4 },
+  fg:     { marginBottom: 11 } as React.CSSProperties,
+  hint:   { fontSize: 10, color: '#a09e99', marginTop: 4, lineHeight: 1.4 } as React.CSSProperties,
+  row2:   { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 11 } as React.CSSProperties,
+  row3:   { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 11 } as React.CSSProperties,
+  row4:   { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 11 } as React.CSSProperties,
+};
 
 interface Props {
   presupuesto: Presupuesto;
   clientes: Cliente[];
+  isNew: boolean;
   onSave: (p: Presupuesto) => void;
+  onDelete: (id: string) => void;
   onCancel: () => void;
   isPending: boolean;
 }
 
-const S = {
-  panel: { background: '#fff', border: '1px solid #e0ddd5', borderRadius: 6, padding: '16px 18px', marginBottom: 14 } as React.CSSProperties,
-  title: { fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase' as const, color: '#a09e99', marginBottom: 12, fontWeight: 500 },
-  inp:  { width: '100%', height: 30, padding: '0 8px', border: '1px solid #c8c4bc', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none', background: '#fff', color: '#333' } as React.CSSProperties,
-  lbl:  { display: 'block', fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase' as const, color: '#a09e99', marginBottom: 4 },
-  fg:   { marginBottom: 12 } as React.CSSProperties,
-  row2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 } as React.CSSProperties,
-  row3: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 12 } as React.CSSProperties,
-};
-
-const fmt = (n: number) => Math.round(n).toLocaleString('es-ES') + ' €';
-
-export default function PresupuestoEditor({ presupuesto, clientes, onSave, onCancel, isPending }: Props) {
+export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave, onDelete, onCancel, isPending }: Props) {
   const [p, setP] = useState<Presupuesto>(presupuesto);
+  const router = useRouter();
 
-  function upd(patch: Partial<Presupuesto>) {
-    setP(prev => ({ ...prev, ...patch }));
-  }
+  function upd(patch: Partial<Presupuesto>) { setP(prev => ({ ...prev, ...patch })); }
 
-  // Familia change: reset capitulos and tareas
+  // Familia: reset capitulos
   function setFamilia(familia: Presupuesto['familia']) {
     const caps = capsFor(familia);
-    upd({
-      familia,
-      capitulos: caps.map(c => ({ key: c[0], label: c[1], max: c[2], real: c[2] })),
-    });
+    upd({ familia, capitulos: caps.map(c => ({ key: c[0], label: c[1], max: c[2], real: c[2] })) });
   }
 
-  // Plantilla change: reset tareas
+  // Plantilla: reset tareas
   function setPlantilla(plantilla: Presupuesto['plantilla']) {
     upd({ plantilla, tareas: plantillaDef(plantilla) });
   }
 
-  // PEM row operations
   function setPemRow(i: number, patch: Partial<PemRow>) {
     const rows = [...p.pemRows];
     rows[i] = { ...rows[i], ...patch };
     upd({ pemRows: rows });
   }
-  function addPemRow() {
-    upd({ pemRows: [...p.pemRows, { concepto: '', m2: 0, computaM2: false, modo: 'auto', coef: 0.5, eurM2: 0 }] });
-  }
-  function delPemRow(i: number) {
-    if (p.pemRows.length <= 1) return;
-    upd({ pemRows: p.pemRows.filter((_, idx) => idx !== i) });
-  }
 
-  // Tarea sub-hour change
-  function setSubH(taskKey: string, subIdx: number, h: number) {
+  function setSubH(taskKey: string, si: number, h: number) {
     const tareas = { ...p.tareas };
     const sub = [...tareas[taskKey].sub];
-    sub[subIdx] = { ...sub[subIdx], h };
+    sub[si] = { ...sub[si], h };
     tareas[taskKey] = { ...tareas[taskKey], sub };
     upd({ tareas });
   }
 
-  // Capitulo real change
   function setCapReal(i: number, real: number) {
     const caps = [...p.capitulos];
     caps[i] = { ...caps[i], real };
     upd({ capitulos: caps });
   }
 
+  function recalcPartidas() {
+    upd({ partidas: calcPartidasDef(p) });
+  }
+
+  function addPartida() {
+    const fases = p.fases?.length ? p.fases : ['FASE 1 · PROYECTO', 'FASE 2 · OBRA'];
+    upd({ partidas: [...p.partidas, { fase: fases[0], concepto: '', importe: 0, tipo: 'fijo' }] });
+  }
+
+  function setPartida(i: number, patch: Partial<Partida>) {
+    const parts = [...p.partidas];
+    parts[i] = { ...parts[i], ...patch } as Partida;
+    upd({ partidas: parts });
+  }
+
+  function delPartida(i: number) {
+    upd({ partidas: p.partidas.filter((_, idx) => idx !== i) });
+  }
+
+  function addFase(name: string) {
+    if (!name.trim()) return;
+    const fases = p.fases ?? ['FASE 1 · PROYECTO', 'FASE 2 · OBRA'];
+    if (!fases.includes(name.trim())) upd({ fases: [...fases, name.trim()] });
+  }
+
+  function delFase(f: string) {
+    upd({ fases: (p.fases ?? []).filter(x => x !== f) });
+  }
+
+  function toggleObs(id: string, on: boolean) {
+    const sel = [...p.observacionesSel];
+    const i = sel.indexOf(id);
+    if (on && i < 0) sel.push(id);
+    if (!on && i >= 0) sel.splice(i, 1);
+    upd({ observacionesSel: sel });
+  }
+
+  function addCustomObs(txt: string, grupo: string) {
+    if (!txt.trim()) return;
+    const id = 'oc_' + Date.now();
+    const obs = [...(p.observacionesCustom ?? []), { id, grupo, txt }];
+    upd({ observacionesCustom: obs, observacionesSel: [...p.observacionesSel, id] });
+  }
+
   const I3 = escala(p);
   const m2T = m2Totales(p);
-  const tpl = p.plantilla === 'reforma' ? 'reforma' : 'nueva';
+  const tpl = p.plantilla === 'reforma';
+  const tplBase = tpl ? 100 : 250;
+  const mc = mcBase(p);
+
+  // Toggle button style
+  const tog = (active: boolean): React.CSSProperties => ({
+    height: 30, padding: '0 13px', borderRadius: 6, fontSize: 12, fontFamily: 'inherit',
+    cursor: 'pointer', border: '1px solid', display: 'inline-flex', alignItems: 'center',
+    background: active ? '#333' : '#fff', color: active ? '#fff' : '#6b6a66',
+    borderColor: active ? '#333' : '#c8c4bc', transition: 'background .12s',
+  });
+
+  const pref = p.fases ?? ['FASE 1 · PROYECTO', 'FASE 2 · OBRA'];
 
   return (
     <div style={{ padding: '18px 20px', maxWidth: 1340 }}>
-      {/* Toolbar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-        <button onClick={onCancel}
-          style={{ height: 30, padding: '0 12px', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', border: '1px solid #c8c4bc', background: '#fff', color: '#333' }}>
-          ← Volver
-        </button>
-        <span style={{ fontSize: 13, fontWeight: 500 }}>{p.numero}</span>
-        <div style={{ flex: 1 }} />
-        <button onClick={() => openPresupuestoPDF(p)}
-          style={{ height: 30, padding: '0 12px', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', border: '1px solid #c8c4bc', background: '#fff', color: '#333' }}>
-          Vista PDF
-        </button>
-        <button onClick={() => onSave(p)} disabled={isPending}
-          style={{ height: 30, padding: '0 16px', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', cursor: isPending ? 'wait' : 'pointer', border: 'none', background: '#333', color: '#fff', opacity: isPending ? 0.6 : 1 }}>
-          {isPending ? 'Guardando…' : 'Guardar'}
-        </button>
+      {/* Breadcrumb */}
+      <div style={{ background: '#fff', borderBottom: '1px solid #e0ddd5', padding: '8px 0', fontSize: 11, color: '#a09e99', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span onClick={onCancel} style={{ cursor: 'pointer', textDecoration: 'underline' }}>Presupuestos</span>
+        <span>›</span>
+        <b style={{ color: '#333', fontWeight: 500 }}>{p.numero}</b>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 16, alignItems: 'start' }}>
-        {/* ── LEFT COLUMN ────────────────────────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 420px', gap: 16, alignItems: 'start' }}>
+
+        {/* ── LEFT COLUMN ─────────────────────────────────────────────────── */}
         <div>
 
-          {/* Panel Datos */}
-          <div style={S.panel}>
-            <div style={S.title}>Datos</div>
-            <div style={S.row2}>
-              <div>
-                <label style={S.lbl}>Número</label>
-                <input style={S.inp} value={p.numero} onChange={e => upd({ numero: e.target.value })} />
+          {/* Panel 1: Cliente y proyecto */}
+          <div style={P.panel}>
+            <div style={P.title}>Cliente y proyecto</div>
+            <div style={P.row2}>
+              <div style={P.fg}><label style={P.lbl}>Nº</label>
+                <input style={P.inp} value={p.numero} onChange={e => upd({ numero: e.target.value })} />
               </div>
-              <div>
-                <label style={S.lbl}>Fecha</label>
-                <input type="date" style={S.inp} value={p.fecha} onChange={e => upd({ fecha: e.target.value })} />
+              <div style={P.fg}><label style={P.lbl}>Fecha</label>
+                <input type="date" style={P.inp} value={p.fecha} onChange={e => upd({ fecha: e.target.value })} />
               </div>
             </div>
-            <div style={S.fg}>
-              <label style={S.lbl}>Cliente</label>
-              <select style={S.inp} value={p.clienteRefId ?? ''}
-                onChange={e => {
-                  const cli = clientes.find(c => c.id === e.target.value);
-                  upd({
-                    clienteRefId: e.target.value || null,
-                    cliente: cli
-                      ? { nombre: cli.nombre, dni: cli.nif, tel: cli.tel, email: cli.email, dir1: cli.dir1, dir2: cli.dir2, dir3: cli.dir3 }
-                      : p.cliente,
-                  });
-                }}>
-                <option value="">— Sin cliente vinculado —</option>
-                {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-              </select>
+            <div style={P.fg}><label style={P.lbl}>Cliente (nombre / razón social)</label>
+              <input style={P.inp} value={p.cliente.nombre} onChange={e => upd({ cliente: { ...p.cliente, nombre: e.target.value } })} />
             </div>
-            <div style={S.row2}>
-              <div>
-                <label style={S.lbl}>Nombre del cliente</label>
-                <input style={S.inp} value={p.cliente.nombre} onChange={e => upd({ cliente: { ...p.cliente, nombre: e.target.value } })} />
+            <div style={P.row3}>
+              <div style={P.fg}><label style={P.lbl}>DNI/NIF</label>
+                <input style={P.inp} value={p.cliente.dni} onChange={e => upd({ cliente: { ...p.cliente, dni: e.target.value } })} />
               </div>
-              <div>
-                <label style={S.lbl}>NIF / CIF</label>
-                <input style={S.inp} value={p.cliente.dni} onChange={e => upd({ cliente: { ...p.cliente, dni: e.target.value } })} />
+              <div style={P.fg}><label style={P.lbl}>Teléfono</label>
+                <input style={P.inp} value={p.cliente.tel} onChange={e => upd({ cliente: { ...p.cliente, tel: e.target.value } })} />
+              </div>
+              <div style={P.fg}><label style={P.lbl}>Email</label>
+                <input style={P.inp} value={p.cliente.email} onChange={e => upd({ cliente: { ...p.cliente, email: e.target.value } })} />
               </div>
             </div>
-            <div style={S.fg}>
-              <label style={S.lbl}>Título del proyecto</label>
-              <input style={S.inp} value={p.proyecto.titulo} onChange={e => upd({ proyecto: { ...p.proyecto, titulo: e.target.value } })} />
+            <div style={P.fg}><label style={P.lbl}>Dirección — calle y número</label>
+              <input style={P.inp} value={p.cliente.dir1} onChange={e => upd({ cliente: { ...p.cliente, dir1: e.target.value } })} />
             </div>
-            <div style={S.row2}>
-              <div>
-                <label style={S.lbl}>Municipio</label>
-                <input style={S.inp} value={p.proyecto.lugarMunicipio} onChange={e => upd({ proyecto: { ...p.proyecto, lugarMunicipio: e.target.value } })} />
+            <div style={P.row2}>
+              <div style={P.fg}><label style={P.lbl}>Código postal y ciudad</label>
+                <input style={P.inp} value={p.cliente.dir2} onChange={e => upd({ cliente: { ...p.cliente, dir2: e.target.value } })} />
               </div>
-              <div>
-                <label style={S.lbl}>Dirección</label>
-                <input style={S.inp} value={p.proyecto.lugarDir} onChange={e => upd({ proyecto: { ...p.proyecto, lugarDir: e.target.value } })} />
+              <div style={P.fg}><label style={P.lbl}>Provincia</label>
+                <input style={P.inp} value={p.cliente.dir3} onChange={e => upd({ cliente: { ...p.cliente, dir3: e.target.value } })} />
+              </div>
+            </div>
+            <div style={P.fg}><label style={P.lbl}>Título del proyecto</label>
+              <input style={P.inp} value={p.proyecto.titulo} placeholder="Vivienda unifamiliar…" onChange={e => upd({ proyecto: { ...p.proyecto, titulo: e.target.value } })} />
+            </div>
+            <div style={P.row3}>
+              <div style={P.fg}><label style={P.lbl}>Municipio actuación</label>
+                <input style={P.inp} value={p.proyecto.lugarMunicipio} onChange={e => upd({ proyecto: { ...p.proyecto, lugarMunicipio: e.target.value } })} />
+              </div>
+              <div style={P.fg}><label style={P.lbl}>Dirección actuación</label>
+                <input style={P.inp} value={p.proyecto.lugarDir} onChange={e => upd({ proyecto: { ...p.proyecto, lugarDir: e.target.value } })} />
+              </div>
+              <div style={P.fg}><label style={P.lbl}>Ref. catastral</label>
+                <input style={P.inp} value={p.proyecto.refCatastral} onChange={e => upd({ proyecto: { ...p.proyecto, refCatastral: e.target.value } })} />
               </div>
             </div>
           </div>
 
-          {/* Panel Intervención */}
-          <div style={S.panel}>
-            <div style={S.title}>Intervención COAG</div>
-            <div style={S.row2}>
-              <div>
-                <label style={S.lbl}>Familia</label>
-                <select style={S.inp} value={p.familia} onChange={e => setFamilia(e.target.value as Presupuesto['familia'])}>
-                  <option value="viviendas">Viviendas</option>
-                  <option value="otros">Otros usos</option>
-                  <option value="urbanizacion">Urbanización</option>
-                </select>
-              </div>
-              <div>
-                <label style={S.lbl}>Plantilla</label>
-                <select style={S.inp} value={p.plantilla} onChange={e => setPlantilla(e.target.value as Presupuesto['plantilla'])}>
-                  <option value="nueva">Obra nueva</option>
-                  <option value="reforma">Reforma</option>
-                </select>
+          {/* Panel 2: Tipo de intervención */}
+          <div style={P.panel}>
+            <div style={P.title}>Tipo de intervención</div>
+            <div style={P.fg}><label style={P.lbl}>Familia (módulos COAG)</label>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {[['viviendas','Edificios de viviendas'],['otros','Otros usos'],['urbanizacion','Urbanización']].map(([v, l]) => (
+                  <button key={v} style={tog(p.familia === v)} onClick={() => setFamilia(v as Presupuesto['familia'])}>{l}</button>
+                ))}
               </div>
             </div>
-
-            {/* Localización */}
-            <div style={{ marginBottom: 10 }}>
-              <label style={S.lbl}>Localización (Fl)</label>
-              <select style={S.inp} value={p.flKey} onChange={e => upd({ flKey: e.target.value as 'A' | 'B' })}>
-                {FL_OPTS.map(o => <option key={o.k} value={o.k}>{o.label}</option>)}
-              </select>
+            <div style={P.fg}><label style={P.lbl}>Plantilla de honorarios</label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {[['nueva','Obra nueva'],['reforma','Rehabilitación / Reforma']].map(([v, l]) => (
+                  <button key={v} style={tog(p.plantilla === v)} onClick={() => setPlantilla(v as Presupuesto['plantilla'])}>{l}</button>
+                ))}
+              </div>
             </div>
+          </div>
 
-            {/* Viviendas */}
-            {p.familia === 'viviendas' && (
-              <>
-                <div style={S.row3}>
-                  <div>
-                    <label style={S.lbl}>Mo (€/m²)</label>
-                    <input type="number" style={S.inp} value={p.mo} onChange={e => upd({ mo: +e.target.value })} />
-                  </div>
-                  <div>
-                    <label style={S.lbl}>Tipología (Ft)</label>
-                    <select style={S.inp} value={p.ftKey} onChange={e => upd({ ftKey: e.target.value as Presupuesto['ftKey'] })}>
-                      {FT_VIV.map(o => <option key={o.k} value={o.k}>{o.label}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={S.lbl}>Calidad (Fc)</label>
-                    <select style={S.inp} value={p.fcKey} onChange={e => upd({ fcKey: e.target.value as Presupuesto['fcKey'] })}>
-                      {FC_VIV.map(o => <option key={o.k} value={o.k}>{o.label}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div style={{ fontSize: 11, color: '#a09e99', marginTop: -8, marginBottom: 10 }}>
-                  Mc = {p.mo} × {(FL_OPTS.find(x => x.k === p.flKey)?.v ?? 1).toFixed(2)} × {(FT_VIV.find(x => x.k === p.ftKey)?.v ?? 1).toFixed(2)} × {(FC_VIV.find(x => x.k === p.fcKey)?.v ?? 1).toFixed(2)} = <b style={{ color: '#333' }}>{fmt(mcBase(p))}/m²</b>
-                </div>
-              </>
-            )}
+          {/* Panel 3: PEM · módulos COAG */}
+          <div style={P.panel}>
+            <div style={P.title}>PEM · módulos COAG</div>
 
-            {/* Otros usos */}
-            {p.familia === 'otros' && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-                <div>
-                  <label style={S.lbl}>Mo (€/m²)</label>
-                  <input type="number" style={S.inp} value={p.mo} onChange={e => upd({ mo: +e.target.value })} />
+            {/* Selectores según familia */}
+            {p.familia === 'viviendas' && (<>
+              <div style={P.row2}>
+                <div style={P.fg}><label style={P.lbl}>Módulo base Mo (€/m²)</label>
+                  <input type="number" step="0.01" style={P.inp} value={p.mo} onChange={e => upd({ mo: +e.target.value })} />
                 </div>
-                <div>
-                  <label style={S.lbl}>Uso</label>
-                  <select style={S.inp} value={p.usoKey} onChange={e => upd({ usoKey: e.target.value })}>
-                    <option value="">— Selecciona uso —</option>
-                    {USOS_OTROS.map(g => (
+                <div style={P.fg}><label style={P.lbl}>Localización (Fl)</label>
+                  <select style={P.inp} value={p.flKey} onChange={e => upd({ flKey: e.target.value as 'A'|'B' })}>
+                    {FL_OPTS.map(o => <option key={o.k} value={o.k}>{o.label}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div style={P.row2}>
+                <div style={P.fg}><label style={P.lbl}>Tipología (Ft)</label>
+                  <select style={P.inp} value={p.ftKey} onChange={e => upd({ ftKey: e.target.value as Presupuesto['ftKey'] })}>
+                    {FT_VIV.map(o => <option key={o.k} value={o.k}>{o.label}</option>)}
+                  </select>
+                </div>
+                <div style={P.fg}><label style={P.lbl}>Calidad (Fc)</label>
+                  <select style={P.inp} value={p.fcKey} onChange={e => upd({ fcKey: e.target.value as Presupuesto['fcKey'] })}>
+                    {FC_VIV.map(o => <option key={o.k} value={o.k}>{o.label}</option>)}
+                  </select>
+                </div>
+              </div>
+            </>)}
+
+            {p.familia === 'otros' && (<>
+              <div style={P.row2}>
+                <div style={P.fg}><label style={P.lbl}>Módulo base Mo (€/m²)</label>
+                  <input type="number" step="0.01" style={P.inp} value={p.mo} onChange={e => upd({ mo: +e.target.value })} />
+                </div>
+                <div style={P.fg}><label style={P.lbl}>Localización (Fl)</label>
+                  <select style={P.inp} value={p.flKey} onChange={e => upd({ flKey: e.target.value as 'A'|'B' })}>
+                    {FL_OPTS.map(o => <option key={o.k} value={o.k}>{o.label}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div style={P.fg}><label style={P.lbl}>Uso</label>
+                <select style={P.inp} value={p.usoKey} onChange={e => upd({ usoKey: e.target.value })}>
+                  <option value="">— Selecciona uso —</option>
+                  {USOS_OTROS.map(g => (
+                    <optgroup key={g.g} label={g.g}>
+                      {g.items.map(it => <option key={it[0]} value={it[0]}>{it[1]} (×{it[2]})</option>)}
+                    </optgroup>
+                  ))}
+                </select>
+              </div>
+            </>)}
+
+            {p.familia === 'urbanizacion' && (<>
+              <div style={P.row2}>
+                <div style={P.fg}><label style={P.lbl}>Módulo base Mu (€/m²)</label>
+                  <input type="number" step="0.01" style={P.inp} value={p.mu} onChange={e => upd({ mu: +e.target.value })} />
+                </div>
+                <div style={P.fg}><label style={P.lbl}>Localización (Fl)</label>
+                  <select style={P.inp} value={p.flKey} onChange={e => upd({ flKey: e.target.value as 'A'|'B' })}>
+                    {FL_OPTS.map(o => <option key={o.k} value={o.k}>{o.label}</option>)}
+                  </select>
+                </div>
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, fontSize: 12, cursor: 'pointer' }}>
+                <input type="checkbox" checked={p.urbCalle} onChange={e => upd({ urbCalle: e.target.checked })} style={{ width: 'auto', height: 'auto' }} />
+                Urbanización completa de calle (93,50 €/m²)
+              </label>
+              {!p.urbCalle && (
+                <div style={P.fg}><label style={P.lbl}>Tipo</label>
+                  <select style={P.inp} value={p.usoKey} onChange={e => upd({ usoKey: e.target.value })}>
+                    <option value="">— Selecciona —</option>
+                    {USOS_URB.map(g => (
                       <optgroup key={g.g} label={g.g}>
-                        {g.items.map(it => <option key={it[0]} value={it[0]}>{it[1]} (×{it[2]})</option>)}
+                        {g.items.map(it => <option key={it[0]} value={it[0]}>{it[1]}</option>)}
                       </optgroup>
                     ))}
                   </select>
                 </div>
-              </div>
-            )}
+              )}
+            </>)}
 
-            {/* Urbanización */}
-            {p.familia === 'urbanizacion' && (
-              <div style={{ marginBottom: 10 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, fontSize: 12, cursor: 'pointer' }}>
-                  <input type="checkbox" checked={p.urbCalle} onChange={e => upd({ urbCalle: e.target.checked })} />
-                  Urbanización completa de calle (93,50 €/m² fijo)
-                </label>
-                {!p.urbCalle && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    <div>
-                      <label style={S.lbl}>Mu (€/m²)</label>
-                      <input type="number" style={S.inp} value={p.mu} onChange={e => upd({ mu: +e.target.value })} />
-                    </div>
-                    <div>
-                      <label style={S.lbl}>Tipo</label>
-                      <select style={S.inp} value={p.usoKey} onChange={e => upd({ usoKey: e.target.value })}>
-                        <option value="">— Selecciona —</option>
-                        {USOS_URB.map(g => (
-                          <optgroup key={g.g} label={g.g}>
-                            {g.items.map(it => <option key={it[0]} value={it[0]}>{it[1]}</option>)}
-                          </optgroup>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Panel PEM */}
-          <div style={S.panel}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <div style={S.title}>Presupuesto de Ejecución Material (PEM)</div>
-              <button onClick={addPemRow}
-                style={{ height: 24, padding: '0 10px', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', border: '1px solid #c8c4bc', borderRadius: 6, background: '#fff', color: '#6b6a66' }}>
-                + Fila
-              </button>
+            <div style={P.hint}>
+              Mc base = <b>{fmt(mc)}/m²</b>. Cada fila usa Mc×coef (vivienda=1; garaje/piscina/porche≈0,5) o un €/m² manual.
             </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+
+            {/* Tabla PEM */}
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 4 }}>
               <thead>
-                <tr style={{ background: '#f5f4f0' }}>
-                  {['Concepto','m²','Computa','Modo','Coef / €/m²','€/m²','Total',''].map(h => (
-                    <th key={h} style={{ fontSize: 10, letterSpacing: '.05em', textTransform: 'uppercase', color: '#a09e99', fontWeight: 500, padding: '6px 8px', borderBottom: '1px solid #e0ddd5', textAlign: h === 'Total' || h === '€/m²' ? 'right' : 'left' }}>{h}</th>
+                <tr style={{ borderBottom: '1px solid #e0ddd5' }}>
+                  {['Concepto','m²','€/m²','Coef / €','m²t','Importe',''].map((h, i) => (
+                    <th key={i} style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.05em', color: '#a09e99', fontWeight: 500, padding: '4px 6px', textAlign: h === 'Importe' || h === 'm²' ? 'right' : 'left' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {p.pemRows.map((r, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid #f0eee9' }}>
-                    <td style={{ padding: '5px 6px' }}>
-                      <input style={{ ...S.inp, height: 26 }} value={r.concepto} onChange={e => setPemRow(i, { concepto: e.target.value })} />
+                  <tr key={i} style={{ borderBottom: '1px solid #f4f2ed' }}>
+                    <td style={{ padding: '4px 6px' }}>
+                      <input style={{ ...P.inp, height: 28 }} value={r.concepto} onChange={e => setPemRow(i, { concepto: e.target.value })} />
                     </td>
-                    <td style={{ padding: '5px 6px', width: 70 }}>
-                      <input type="number" min="0" style={{ ...S.inp, height: 26, textAlign: 'right' }} value={r.m2 || ''} onChange={e => setPemRow(i, { m2: +e.target.value || 0 })} />
+                    <td style={{ padding: '4px 6px', width: 70 }}>
+                      <input type="number" step="0.01" style={{ ...P.inp, height: 28, textAlign: 'right', width: '100%' }} value={r.m2 || ''} onChange={e => setPemRow(i, { m2: +e.target.value || 0 })} />
                     </td>
-                    <td style={{ padding: '5px 6px', textAlign: 'center', width: 60 }}>
-                      <input type="checkbox" checked={r.computaM2} onChange={e => setPemRow(i, { computaM2: e.target.checked })} />
-                    </td>
-                    <td style={{ padding: '5px 6px', width: 80 }}>
-                      <select style={{ ...S.inp, height: 26, fontSize: 11 }} value={r.modo} onChange={e => setPemRow(i, { modo: e.target.value as 'auto' | 'manual' })}>
-                        <option value="auto">Auto</option>
+                    <td style={{ padding: '4px 6px', width: 96 }}>
+                      <select style={{ ...P.inp, height: 28, fontSize: 11 }} value={r.modo} onChange={e => setPemRow(i, { modo: e.target.value as 'auto' | 'manual' })}>
+                        <option value="auto">Mc×coef</option>
                         <option value="manual">Manual</option>
                       </select>
                     </td>
-                    <td style={{ padding: '5px 6px', width: 80 }}>
-                      {r.modo === 'auto'
-                        ? <input type="number" min="0" step="0.1" style={{ ...S.inp, height: 26, textAlign: 'right' }} value={r.coef} onChange={e => setPemRow(i, { coef: +e.target.value })} />
-                        : <input type="number" min="0" style={{ ...S.inp, height: 26, textAlign: 'right' }} value={r.eurM2 || ''} onChange={e => setPemRow(i, { eurM2: +e.target.value || 0 })} />
+                    <td style={{ padding: '4px 6px', width: 78 }}>
+                      {r.modo === 'manual'
+                        ? <input type="number" step="0.01" style={{ ...P.inp, height: 28, textAlign: 'right', width: '100%' }} value={r.eurM2 || ''} onChange={e => setPemRow(i, { eurM2: +e.target.value || 0 })} />
+                        : <input type="number" step="0.01" style={{ ...P.inp, height: 28, textAlign: 'right', width: '100%' }} value={r.coef} title="coeficiente sobre Mc" onChange={e => setPemRow(i, { coef: +e.target.value })} />
                       }
                     </td>
-                    <td style={{ padding: '5px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontSize: 11, color: '#6b6a66' }}>
-                      {Math.round(rowEurM2(p, r)).toLocaleString('es-ES')}
+                    <td style={{ padding: '4px 6px', width: 34, textAlign: 'center' }} title="Computa en m² totales">
+                      <input type="checkbox" checked={r.computaM2} onChange={e => setPemRow(i, { computaM2: e.target.checked })}
+                        style={{ accentColor: '#b07a1e', width: 'auto', height: 'auto' }} />
                     </td>
-                    <td style={{ padding: '5px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
-                      {Math.round((r.m2 || 0) * rowEurM2(p, r)).toLocaleString('es-ES')} €
+                    <td style={{ padding: '4px 8px', textAlign: 'right', fontSize: 12, fontVariantNumeric: 'tabular-nums', width: 100 }}>
+                      {fmt((r.m2 || 0) * rowEurM2(p, r))}
                     </td>
-                    <td style={{ padding: '5px 6px', width: 28 }}>
+                    <td style={{ padding: '4px 4px', width: 26 }}>
                       {p.pemRows.length > 1 && (
-                        <button onClick={() => delPemRow(i)} style={{ width: 24, height: 26, border: 'none', background: 'none', cursor: 'pointer', color: '#a09e99', fontSize: 16 }}>×</button>
+                        <button onClick={() => upd({ pemRows: p.pemRows.filter((_, idx) => idx !== i) })}
+                          style={{ width: 24, height: 24, border: 'none', background: 'none', cursor: 'pointer', color: '#a09e99', fontSize: 15 }}>×</button>
                       )}
                     </td>
                   </tr>
                 ))}
               </tbody>
-              <tfoot>
-                <tr style={{ background: '#f5f4f0', fontWeight: 600 }}>
-                  <td colSpan={6} style={{ padding: '7px 8px', fontSize: 11, textAlign: 'right' }}>PEM TOTAL · I3 = {I3.toFixed(3)} · m² = {m2T}</td>
-                  <td style={{ padding: '7px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{Math.round(pemTotal(p)).toLocaleString('es-ES')} €</td>
-                  <td />
-                </tr>
-              </tfoot>
+            </table>
+
+            <button onClick={() => upd({ pemRows: [...p.pemRows, { concepto: '', m2: 0, computaM2: false, modo: 'auto', coef: 0.5, eurM2: 0 }] })}
+              style={{ height: 26, padding: '0 9px', borderRadius: 6, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', border: '1px solid #c8c4bc', background: '#fff', color: '#333', marginTop: 6 }}>
+              + Fila
+            </button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '8px 0', fontSize: 12.5, borderTop: '1px solid #e0ddd5', marginTop: 8, fontWeight: 600 }}>
+              <span style={{ fontSize: 11, color: '#a09e99' }}>PEM total</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(pemTotal(p))}</span>
+            </div>
+          </div>
+
+          {/* Panel 4: Capítulos */}
+          <div style={P.panel}>
+            <div style={P.title}>Capítulos · % de obra (coeficiente sobre Mc y, en reforma, complejidad)</div>
+            <div style={P.hint}>Por defecto 100% (obra completa). Baja el % de cada capítulo en intervenciones parciales/reforma.</div>
+            <div style={{ marginTop: 8 }}>
+              {p.capitulos.map((c, i) => (
+                <div key={c.key} style={{ display: 'grid', gridTemplateColumns: '1fr 70px', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+                  <label style={{ fontSize: 11, color: '#6b6a66' }}>{c.label} <span style={{ fontSize: 10, color: '#a09e99' }}>(máx {c.max}%)</span></label>
+                  <input type="number" step="0.1" style={{ ...P.inp, height: 28, textAlign: 'right' }}
+                    value={c.real} onChange={e => setCapReal(i, +e.target.value || 0)} />
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 12.5, borderTop: '1px solid #e0ddd5', marginTop: 8, fontWeight: 600 }}>
+              <span style={{ fontSize: 11, color: '#a09e99' }}>Σ % capítulos</span>
+              <span>{p.capitulos.reduce((s, c) => s + (+c.real || 0), 0).toFixed(1)}% → ×{(p.capitulos.reduce((s, c) => s + (+c.real || 0), 0) / 100).toFixed(3)}</span>
+            </div>
+          </div>
+
+          {/* Panel 5: Honorarios */}
+          <div style={P.panel}>
+            <div style={P.title}>Honorarios · cálculo por horas</div>
+            <div style={P.row4}>
+              <div style={P.fg}><label style={P.lbl}>€/hora</label>
+                <input type="number" step="1" style={P.inp} value={p.eurHora} onChange={e => upd({ eurHora: +e.target.value })} />
+              </div>
+              <div style={P.fg}>
+                <label style={P.lbl}>Superficie (m²) <span style={{ fontSize: 9, fontWeight: 400, letterSpacing: 0 }}>→ del PEM</span></label>
+                <input type="number" style={{ ...P.inp, background: '#f5f4f0', color: '#6b6a66' }} value={m2T} disabled />
+              </div>
+              <div style={P.fg}><label style={P.lbl}>Sup. parcela (m²)</label>
+                <input type="number" step="0.01" style={P.inp} value={p.superficieParcela || ''} onChange={e => upd({ superficieParcela: +e.target.value || 0 })} />
+              </div>
+              <div style={P.fg}>
+                <label style={P.lbl}>Complejidad k</label>
+                <input type="number" step="0.05" style={tpl ? { ...P.inp, background: '#f5f4f0', color: '#6b6a66' } : P.inp}
+                  disabled={tpl} value={p.complejidadK}
+                  title={tpl ? 'En reforma k se calcula del % de capítulos' : ''}
+                  onChange={e => upd({ complejidadK: +e.target.value })} />
+              </div>
+            </div>
+            <div style={P.hint}>
+              Factor de escala I3 = k × ({m2T} m² / {tplBase}) = <b>{I3.toFixed(3)}</b>.
+            </div>
+
+            {/* Entregables colapsables */}
+            <div style={{ margin: '10px 0' }}>
+              {Object.entries(p.tareas).map(([key, tarea]) => {
+                const meta = (tpl ? p.plantilla === 'reforma' : false) ? undefined : undefined;
+                void meta;
+                const h = tarea.sub.reduce((s, s2) => s + (+s2.h || 0), 0);
+                const imp = h * (tarea.escala ? I3 : 1) * p.eurHora;
+                return (
+                  <details key={key} style={{ border: '1px solid #e0ddd5', borderRadius: 5, marginBottom: 7 }}>
+                    <summary style={{ listStyle: 'none', cursor: 'pointer', padding: '8px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, fontSize: 12 }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span>{key}</span>
+                        {tarea.escala && <span style={{ fontSize: 11, color: '#6b6a66' }}>×escala</span>}
+                      </span>
+                      <span style={{ fontSize: 11, color: '#6b6a66', whiteSpace: 'nowrap' }}>{h} h · {fmt(imp)}</span>
+                    </summary>
+                    <div style={{ padding: '8px 10px', borderTop: '1px solid #e0ddd5' }}>
+                      {tarea.sub.map((s, si) => (
+                        <div key={si} style={{ display: 'grid', gridTemplateColumns: '1fr 70px', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+                          <label style={{ fontSize: 11, color: '#6b6a66' }}>{s.label}</label>
+                          <input type="number" step="0.5" style={{ ...P.inp, height: 26, textAlign: 'right' }}
+                            value={s.h} onChange={e => setSubH(key, si, +e.target.value || 0)} />
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                );
+              })}
+            </div>
+
+            {/* D.O. */}
+            <div style={P.row4}>
+              {[
+                { lbl: 'Duración obra (meses)', key: 'duracionMeses' },
+                { lbl: 'Visitas/mes', key: 'visitasMes' },
+                { lbl: 'Km (ida/vuelta)', key: 'km' },
+                { lbl: 'Horas/visita extra', key: 'horasVisita' },
+              ].map(({ lbl, key }) => (
+                <div key={key} style={P.fg}><label style={P.lbl}>{lbl}</label>
+                  <input type="number" step="1" style={P.inp}
+                    value={(p as unknown as Record<string, number>)[key] ?? 0}
+                    onChange={e => upd({ [key]: +e.target.value || 0 } as Partial<Presupuesto>)} />
+                </div>
+              ))}
+            </div>
+            <div style={P.hint}>
+              Dirección de obra = <b>{fmt(doEurMes(p))}/mes</b> × {p.duracionMeses} meses · DRS = {m2T} m² ×{' '}
+              <input type="number" step="0.1" value={p.drsEurM2}
+                style={{ width: 54, height: 24, padding: '0 4px', border: '1px solid #c8c4bc', borderRadius: 4, fontSize: 11, fontFamily: 'inherit', textAlign: 'right' as const, outline: 'none' }}
+                onChange={e => upd({ drsEurM2: +e.target.value })} />{' '}
+              €/m².
+            </div>
+
+            {/* Extras */}
+            <div style={{ ...P.title, marginTop: 14, marginBottom: 8 }}>Honorarios extra (se suman aparte, no escalan)</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <tbody>
+                {p.extras.map((e, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid #f4f2ed' }}>
+                    <td style={{ width: 24, textAlign: 'center', padding: '5px 6px' }}>
+                      <input type="checkbox" checked={e.aplica} style={{ accentColor: '#b07a1e', width: 'auto', height: 'auto' }}
+                        onChange={ev => {
+                          const extras = [...p.extras]; extras[i] = { ...e, aplica: ev.target.checked };
+                          upd({ extras });
+                        }} />
+                    </td>
+                    <td style={{ fontSize: 12, padding: '5px 6px' }}>{e.label}</td>
+                    <td style={{ width: 64, padding: '5px 6px' }}>
+                      <input type="number" step="0.5" style={{ ...P.inp, height: 26, textAlign: 'right' }}
+                        value={e.horas}
+                        onChange={ev => { const extras = [...p.extras]; extras[i] = { ...e, horas: +ev.target.value || 0 }; upd({ extras }); }} />
+                    </td>
+                    <td style={{ width: 80, textAlign: 'right', fontSize: 12, padding: '5px 8px', fontVariantNumeric: 'tabular-nums', color: '#6b6a66' }}>
+                      {e.aplica ? fmt((+e.horas || 0) * p.eurHora) : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
             </table>
           </div>
 
-          {/* Panel Capítulos */}
-          <div style={S.panel}>
-            <div style={S.title}>Capítulos (coeficiente de obra)</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
-              {p.capitulos.map((c, i) => (
-                <div key={c.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid #f4f2ed' }}>
-                  <span style={{ fontSize: 11, color: '#6b6a66', flex: 1 }}>{c.label}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <input type="number" min="0" max={c.max} step="0.5"
-                      style={{ width: 52, height: 26, padding: '0 6px', border: '1px solid #c8c4bc', borderRadius: 6, fontSize: 11, fontFamily: 'inherit', textAlign: 'right', outline: 'none' }}
-                      value={c.real} onChange={e => setCapReal(i, +e.target.value || 0)} />
-                    <span style={{ fontSize: 10, color: '#a09e99', width: 16 }}>%</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div style={{ marginTop: 8, fontSize: 11, color: '#6b6a66', textAlign: 'right' }}>
-              Suma: {p.capitulos.reduce((s, c) => s + (+c.real || 0), 0).toFixed(1)}% ·
-              Coef. capítulos = {(p.capitulos.reduce((s, c) => s + (+c.real || 0), 0) / 100).toFixed(3)}
-            </div>
-          </div>
-
-          {/* Panel Honorarios */}
-          <div style={S.panel}>
-            <div style={S.title}>Honorarios por horas</div>
-
-            {/* Parámetros base */}
-            <div style={{ ...S.row3, marginBottom: 16 }}>
-              <div>
-                <label style={S.lbl}>€/hora</label>
-                <input type="number" min="1" style={S.inp} value={p.eurHora} onChange={e => upd({ eurHora: +e.target.value })} />
-              </div>
-              <div>
-                <label style={S.lbl}>Superficie parcela (m²)</label>
-                <input type="number" min="0" style={S.inp} value={p.superficieParcela || ''} onChange={e => upd({ superficieParcela: +e.target.value || 0 })} />
-              </div>
-              <div>
-                <label style={S.lbl}>Complejidad k</label>
-                <input type="number" min="0.1" step="0.1" style={S.inp} value={p.complejidadK} onChange={e => upd({ complejidadK: +e.target.value })} />
+          {/* Panel 6: Partidas */}
+          <div style={P.panel}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={{ ...P.title, margin: 0 }}>Partidas del presupuesto</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={recalcPartidas} style={{ height: 26, padding: '0 9px', borderRadius: 6, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', border: '1px solid #c8c4bc', background: '#fff', color: '#333' }} title="Recalcular desde honorarios">
+                  ↺ Recalcular
+                </button>
+                <button onClick={addPartida} style={{ height: 26, padding: '0 9px', borderRadius: 6, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', border: '1px solid #c8c4bc', background: '#fff', color: '#333' }}>
+                  + Línea
+                </button>
               </div>
             </div>
 
-            {/* Entregables */}
-            <div style={{ fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: '#a09e99', marginBottom: 8, fontWeight: 500 }}>
-              Entregables (I3={I3.toFixed(3)})
-            </div>
-            {Object.entries(p.tareas).map(([key, tarea]) => {
-              const h = tarea.sub.reduce((s, s2) => s + (+s2.h || 0), 0);
-              const imp = h * (tarea.escala ? I3 : 1) * p.eurHora;
+            {/* Chips de fases */}
+            <FasesChips fases={pref} onAdd={addFase} onDel={delFase} />
+
+            {/* Tabla de partidas */}
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #e0ddd5' }}>
+                  {['Fase','Concepto','Tipo','Importe','Meses',''].map((h, i) => (
+                    <th key={i} style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.05em', color: '#a09e99', fontWeight: 500, padding: '4px 6px', textAlign: h === 'Importe' ? 'right' : 'left', width: h === 'Fase' ? 110 : h === 'Tipo' ? 90 : h === 'Importe' ? 92 : h === 'Meses' ? 64 : h === '' ? 26 : undefined }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {p.partidas.map((r, i) => {
+                  const tipo = r.tipo || 'fijo';
+                  const hasVal = tipo === 'fijo' || tipo === 'mensual';
+                  return (
+                    <tr key={i} style={{ borderBottom: '1px solid #f4f2ed' }}>
+                      <td style={{ padding: '4px 6px' }}>
+                        <select style={{ ...P.inp, height: 26, fontSize: 11 }} value={r.fase}
+                          onChange={e => setPartida(i, { fase: e.target.value })}>
+                          {pref.map(f => <option key={f} value={f}>{f}</option>)}
+                        </select>
+                      </td>
+                      <td style={{ padding: '4px 6px' }}>
+                        <input type="text" style={{ ...P.inp, height: 26, fontSize: 11 }} value={r.concepto}
+                          onChange={e => setPartida(i, { concepto: e.target.value })} />
+                      </td>
+                      <td style={{ padding: '4px 6px' }}>
+                        <select style={{ ...P.inp, height: 26, fontSize: 11 }} value={tipo}
+                          onChange={e => setPartida(i, { tipo: e.target.value as Partida['tipo'] })}>
+                          <option value="fijo">€ fijo</option>
+                          <option value="mensual">€/mes</option>
+                          <option value="incluido">Incluido</option>
+                          <option value="noincluido">NO INC.</option>
+                        </select>
+                      </td>
+                      <td style={{ padding: '4px 6px' }}>
+                        <input type="number" step="1" style={{ ...P.inp, height: 26, fontSize: 11, textAlign: 'right' }}
+                          disabled={!hasVal} value={hasVal ? Math.round(+(r.importe ?? 0)) : ''}
+                          onChange={e => setPartida(i, { importe: +e.target.value })} />
+                      </td>
+                      <td style={{ padding: '4px 6px' }}>
+                        {tipo === 'mensual' && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                            <input type="number" style={{ ...P.inp, height: 26, fontSize: 11, width: 42 }}
+                              value={+(r.meses ?? 0)} onChange={e => setPartida(i, { meses: +e.target.value })} />
+                            <span style={{ fontSize: 11 }}>m</span>
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: '4px 4px' }}>
+                        <button onClick={() => delPartida(i)} style={{ width: 24, height: 24, border: 'none', background: 'none', cursor: 'pointer', color: '#a09e99', fontSize: 15 }}>×</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            {/* Footer partidas */}
+            {(() => {
+              const baseFijo = p.partidas.filter(r => r.tipo === 'fijo').reduce((s, r) => s + +(r.importe ?? 0), 0);
+              const mensual = p.partidas.find(r => r.tipo === 'mensual');
               return (
-                <details key={key} style={{ marginBottom: 8, border: '1px solid #f0eee9', borderRadius: 4 }}>
-                  <summary style={{ padding: '7px 10px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 500 }}>
-                    <span>{tarea.escala ? '↗' : '—'} {key}</span>
-                    <span style={{ fontVariantNumeric: 'tabular-nums', color: '#6b6a66' }}>{h}h → {fmt(imp)}</span>
-                  </summary>
-                  <div style={{ padding: '8px 10px', background: '#faf9f6' }}>
-                    {tarea.sub.map((sub, si) => (
-                      <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                        <span style={{ flex: 1, fontSize: 11, color: '#6b6a66' }}>{sub.label}</span>
-                        <input type="number" min="0"
-                          style={{ width: 60, height: 24, padding: '0 6px', border: '1px solid #c8c4bc', borderRadius: 4, fontSize: 11, fontFamily: 'inherit', textAlign: 'right', outline: 'none' }}
-                          value={sub.h} onChange={e => setSubH(key, si, +e.target.value || 0)} />
-                        <span style={{ fontSize: 10, color: '#a09e99', width: 12 }}>h</span>
-                      </div>
-                    ))}
-                  </div>
-                </details>
-              );
-            })}
-
-            {/* D.O. */}
-            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #e0ddd5' }}>
-              <div style={{ fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: '#a09e99', marginBottom: 8, fontWeight: 500 }}>
-                Dirección de obra — {fmt(doEurMes(p))}/mes × {p.duracionMeses} m = {fmt(doEurMes(p) * p.duracionMeses)}
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
-                {[
-                  { lbl: 'Duración (meses)', key: 'duracionMeses' },
-                  { lbl: 'Visitas/mes', key: 'visitasMes' },
-                  { lbl: 'Km ida/vuelta', key: 'km' },
-                  { lbl: 'h extra/visita', key: 'horasVisita' },
-                ].map(({ lbl, key: k }) => (
-                  <div key={k}>
-                    <label style={S.lbl}>{lbl}</label>
-                    <input type="number" min="0" style={S.inp}
-                      value={(p as unknown as Record<string, number>)[k] ?? 0}
-                      onChange={e => upd({ [k]: +e.target.value || 0 } as Partial<Presupuesto>)} />
-                  </div>
-                ))}
-              </div>
-              <div style={{ marginTop: 6, fontSize: 11, color: '#a09e99' }}>
-                h D.O. = {p.duracionMeses}m × {p.visitasMes}v × 3 + {p.duracionMeses}m × 16 = {doHoras(p)}h
-              </div>
-            </div>
-
-            {/* DRS */}
-            <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <label style={{ ...S.lbl, margin: 0, minWidth: 120 }}>DRS (€/m²)</label>
-              <input type="number" min="0" step="0.1" style={{ ...S.inp, width: 80 }}
-                value={p.drsEurM2} onChange={e => upd({ drsEurM2: +e.target.value })} />
-              <span style={{ fontSize: 11, color: '#6b6a66' }}>× {m2T} m² = {fmt(m2T * p.drsEurM2)}</span>
-            </div>
-
-            {/* Extras aplicados */}
-            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #e0ddd5' }}>
-              <div style={{ fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: '#a09e99', marginBottom: 8, fontWeight: 500 }}>Extras (no escalan)</div>
-              {p.extras.map((ex, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <input type="checkbox" checked={ex.aplica} onChange={e => {
-                    const extras = [...p.extras]; extras[i] = { ...ex, aplica: e.target.checked }; upd({ extras });
-                  }} />
-                  <span style={{ flex: 1, fontSize: 11 }}>{ex.label}</span>
-                  {ex.aplica && (
-                    <>
-                      <input type="number" min="0"
-                        style={{ width: 60, height: 24, padding: '0 6px', border: '1px solid #c8c4bc', borderRadius: 4, fontSize: 11, fontFamily: 'inherit', textAlign: 'right', outline: 'none' }}
-                        value={ex.horas} onChange={e => {
-                          const extras = [...p.extras]; extras[i] = { ...ex, horas: +e.target.value || 0 }; upd({ extras });
-                        }} />
-                      <span style={{ fontSize: 10, color: '#a09e99', width: 20 }}>h</span>
-                      <span style={{ fontSize: 11, color: '#6b6a66', width: 70, textAlign: 'right' }}>{fmt(ex.horas * p.eurHora)}</span>
-                    </>
-                  )}
+                <div style={{ marginTop: 8, padding: '6px 8px', background: '#f5f4f0', borderRadius: 4, fontSize: 11.5, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                  <span>Base fija: <b>{fmt(baseFijo)}</b></span>
+                  {mensual && <span>DO: <b>{fmt(mensual.importe ?? 0)}/mes × {mensual.meses ?? 0} m</b></span>}
+                  <span>Total c/IVA: <b>{fmt(baseFijo * 1.21)}{mensual ? ' + ' + fmt((mensual.importe ?? 0) * 1.21) + '/mes' : ''}</b></span>
                 </div>
-              ))}
-            </div>
+              );
+            })()}
           </div>
 
-          {/* Panel Costes totales */}
-          <div style={S.panel}>
-            <div style={S.title}>Estimación de costes totales</div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 10, fontWeight: 600, color: '#6b6a66', marginBottom: 6 }}>Parámetros editables</div>
+          {/* Panel 7: Estimación de costes */}
+          <div style={P.panel}>
+            <div style={P.title}>Estimación de costes totales</div>
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#6b6a66', marginBottom: 4 }}>Parámetros editables</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
                 {([
                   ['Ajuste mercado %', 'ajusteMercadoPct'],
@@ -483,72 +597,133 @@ export default function PresupuestoEditor({ presupuesto, clientes, onSave, onCan
                   ['Estudio geotécnico (s/IVA)', 'geotecnico'],
                   ['Impuestos, notaría y registro', 'impuestos'],
                 ] as const).map(([lbl, key]) => (
-                  <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #f4f2ed' }}>
+                  <div key={key} style={{ display: 'grid', gridTemplateColumns: '1fr 70px', gap: 8, alignItems: 'center', marginBottom: 4 }}>
                     <span style={{ fontSize: 11, color: '#6b6a66' }}>{lbl}</span>
-                    <input type="number" step="0.01"
-                      style={{ width: 80, height: 26, padding: '0 6px', border: '1px solid #c8c4bc', borderRadius: 4, fontSize: 11, fontFamily: 'inherit', textAlign: 'right', outline: 'none' }}
+                    <input type="number" step="0.01" style={{ ...P.inp, height: 26, textAlign: 'right' }}
                       value={p.costes[key]} onChange={e => upd({ costes: { ...p.costes, [key]: +e.target.value } })} />
                   </div>
                 ))}
               </div>
             </div>
             <div style={{ borderTop: '1px solid #e0ddd5', paddingTop: 10 }}>
-              <div style={{ fontSize: 10, fontWeight: 600, color: '#6b6a66', marginBottom: 6 }}>Resultado</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#6b6a66', marginBottom: 6 }}>Resultado</div>
               {(() => {
                 const ct = costesTotales(p);
-                return (
-                  <>
-                    {ct.filas.map(([lbl, val, est]) => (
-                      <div key={lbl} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #f4f2ed', fontSize: 12 }}>
-                        <span style={{ color: '#6b6a66', fontSize: 11 }}>{lbl} {est && <span style={{ fontSize: 10, fontStyle: 'italic', color: '#a09e99' }}>Est.</span>}</span>
-                        <span style={{ fontVariantNumeric: 'tabular-nums' }}>{Math.round(val).toLocaleString('es-ES')} €</span>
-                      </div>
-                    ))}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 14, fontWeight: 700 }}>
-                      <span>TOTAL estimado</span>
-                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{Math.round(ct.total).toLocaleString('es-ES')} €</span>
+                return (<>
+                  {ct.filas.map(([lbl, val]) => (
+                    <div key={lbl} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #f4f2ed', fontSize: 12 }}>
+                      <span style={{ color: '#6b6a66', fontSize: 11 }}>{lbl as string}</span>
+                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(val as number)}</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#6b6a66', padding: '2px 0' }}>
-                      <span>Coste total obra</span>
-                      <span>{Math.round(ct.costeObra).toLocaleString('es-ES')} €</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#6b6a66', padding: '2px 0' }}>
-                      <span>m² totales · coste/m²</span>
-                      <span>{ct.m2} m² · {Math.round(ct.costeM2).toLocaleString('es-ES')} €</span>
-                    </div>
-                  </>
-                );
+                  ))}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 14, fontWeight: 700 }}>
+                    <span style={{ fontSize: 11, color: '#a09e99' }}>TOTAL estimado</span>
+                    <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 16 }}>{fmt(ct.total)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#6b6a66', padding: '2px 0' }}>
+                    <span>Coste total obra</span><span>{fmt(ct.costeObra)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#6b6a66', padding: '2px 0' }}>
+                    <span>m² totales · coste/m²</span><span>{ct.m2} m² · {fmt(ct.costeM2)}</span>
+                  </div>
+                </>);
               })()}
             </div>
           </div>
 
-          {/* Panel Estado */}
-          <div style={S.panel}>
-            <div style={S.title}>Estado y ajuste</div>
-            <div style={S.row2}>
-              <div>
-                <label style={S.lbl}>Estado</label>
-                <select style={S.inp} value={p.estado} onChange={e => upd({ estado: e.target.value as Presupuesto['estado'] })}>
-                  <option value="borrador">Borrador</option>
-                  <option value="enviado">Enviado</option>
-                  <option value="aceptado">Aceptado</option>
-                  <option value="rechazado">Rechazado</option>
-                </select>
+          {/* Panel 8: Observaciones */}
+          <ObservacionesPanel p={p} onToggle={toggleObs} onAdd={addCustomObs} onUpd={upd} />
+
+        </div>
+
+        {/* ── RIGHT COLUMN (sticky) ──────────────────────────────────────── */}
+        <div style={{ position: 'sticky', top: 64, maxHeight: 'calc(100vh - 80px)', overflowY: 'auto' }}>
+          <PresupuestoSummary
+            p={p}
+            isNew={isNew}
+            onSave={() => onSave(p)}
+            onPDF={() => openPresupuestoPDF(p)}
+            onDelete={() => onDelete(p.id)}
+            onUpd={upd}
+            isPending={isPending}
+          />
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+// ── Sub-componentes ───────────────────────────────────────────────────────────
+
+function FasesChips({ fases, onAdd, onDel }: { fases: string[]; onAdd: (s: string) => void; onDel: (s: string) => void }) {
+  const [input, setInput] = useState('');
+  return (
+    <div style={{ marginBottom: 8, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', padding: '6px 0 2px' }}>
+      <span style={{ fontSize: 10, color: '#a09e99', textTransform: 'uppercase', letterSpacing: '.06em' }}>Fases:</span>
+      {fases.map((f, fi) => (
+        <span key={f} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#f5f4f0', border: '1px solid #c8c4bc', borderRadius: 12, padding: '1px 8px', fontSize: 11 }}>
+          {f}
+          {fi >= 2 && (
+            <button onClick={() => onDel(f)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#a09e99', fontSize: 12, lineHeight: 1, padding: 0 }}>×</button>
+          )}
+        </span>
+      ))}
+      <input type="text" placeholder="Nueva fase…" value={input} onChange={e => setInput(e.target.value)}
+        style={{ height: 26, padding: '0 8px', border: '1px solid #c8c4bc', borderRadius: 6, fontSize: 11, fontFamily: 'inherit', outline: 'none', width: 150 }} />
+      <button onClick={() => { onAdd(input); setInput(''); }}
+        style={{ height: 26, padding: '0 9px', borderRadius: 6, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', border: '1px solid #c8c4bc', background: '#fff', color: '#333' }}>
+        + Fase
+      </button>
+    </div>
+  );
+}
+
+function ObservacionesPanel({ p, onToggle, onAdd, onUpd }: {
+  p: Presupuesto;
+  onToggle: (id: string, on: boolean) => void;
+  onAdd: (txt: string, grupo: string) => void;
+  onUpd: (patch: Partial<Presupuesto>) => void;
+}) {
+  const [newTxt, setNewTxt] = useState('');
+  const [newGrupo, setNewGrupo] = useState('Incluye');
+  const all = [...OBSERVACIONES_SEED, ...(p.observacionesCustom ?? [])];
+  const inpSt: React.CSSProperties = { height: 30, padding: '0 8px', border: '1px solid #c8c4bc', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none', background: '#fff', color: '#333', width: '100%' };
+
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e0ddd5', borderRadius: 6, padding: '15px 16px', marginBottom: 14 }}>
+      <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#a09e99', marginBottom: 12, fontWeight: 500 }}>
+        Observaciones del PDF (solo aparecen las marcadas)
+      </div>
+      {(['Incluye', 'No incluye', 'Otros'] as const).map(g => {
+        const items = all.filter(o => (o as {grupo?: string}).grupo === g);
+        if (!items.length) return null;
+        return (
+          <div key={g} style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, margin: '6px 0 2px', color: '#6b6a66' }}>{g}</div>
+            {items.map(o => (
+              <div key={o.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 0', borderBottom: '1px solid #f4f2ed', fontSize: 12 }}>
+                <input type="checkbox" checked={p.observacionesSel.includes(o.id)} onChange={e => onToggle(o.id, e.target.checked)}
+                  style={{ marginTop: 3, accentColor: '#b07a1e', width: 'auto', height: 'auto' }} />
+                <div style={{ flex: 1 }}>{(o as {txt?: string}).txt}</div>
               </div>
-              <div>
-                <label style={S.lbl}>Ajuste / descuento (%)</label>
-                <input type="number" step="0.5" style={S.inp} value={p.ajustePct}
-                  onChange={e => upd({ ajustePct: +e.target.value })} />
-              </div>
-            </div>
+            ))}
           </div>
-
-        </div>
-
-        {/* ── RIGHT COLUMN (sticky) ────────────────────────────────────────── */}
-        <div style={{ position: 'sticky', top: 66 }}>
-          <PresupuestoSummary p={p} onSave={() => onSave(p)} onPDF={() => openPresupuestoPDF(p)} isPending={isPending} />
-        </div>
+        );
+      })}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 8 }}>
+        <input type="text" placeholder="Nueva observación personalizada…" value={newTxt} onChange={e => setNewTxt(e.target.value)} style={inpSt} />
+        <select value={newGrupo} onChange={e => setNewGrupo(e.target.value)} style={inpSt}>
+          <option>Incluye</option><option>No incluye</option><option>Otros</option>
+        </select>
+      </div>
+      <button onClick={() => { onAdd(newTxt, newGrupo); setNewTxt(''); }}
+        style={{ height: 26, padding: '0 9px', borderRadius: 6, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', border: '1px solid #c8c4bc', background: '#fff', color: '#333', marginTop: 6 }}>
+        + Añadir observación
+      </button>
+      <div style={{ marginTop: 12 }}>
+        <label style={{ display: 'block', fontSize: 10, letterSpacing: '.05em', textTransform: 'uppercase', color: '#a09e99', marginBottom: 4 }}>Nota interna (no sale en el PDF)</label>
+        <input type="text" style={inpSt} value={p.notaInterna} onChange={e => onUpd({ notaInterna: e.target.value })} />
       </div>
     </div>
   );
