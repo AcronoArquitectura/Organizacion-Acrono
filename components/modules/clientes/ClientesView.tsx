@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import type { Cliente, Proyecto } from '@/lib/types';
+import type { Cliente, Factura, Proyecto } from '@/lib/types';
 import { upsertCliente, deleteCliente } from '@/lib/actions/clientes';
 import ClientesSidebar from './ClientesSidebar';
 import ClientesFicha from './ClientesFicha';
@@ -11,9 +11,10 @@ import ClienteModal from './ClienteModal';
 interface Props {
   initialClientes: Cliente[];
   orgProyectos: Proyecto[];
+  initialFacturas: Factura[];
 }
 
-export default function ClientesView({ initialClientes, orgProyectos }: Props) {
+export default function ClientesView({ initialClientes, orgProyectos, initialFacturas }: Props) {
   const [clientes, setClientes] = useState<Cliente[]>(initialClientes);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -69,6 +70,7 @@ export default function ClientesView({ initialClientes, orgProyectos }: Props) {
           <ClientesFicha
             cliente={selected}
             orgProyectos={orgProyectos}
+            facturas={initialFacturas}
             onEdit={() => openEdit(selected)}
             onDelete={() => handleDelete(selected.id)}
             isPending={isPending}

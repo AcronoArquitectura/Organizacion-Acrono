@@ -1,12 +1,13 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import type { Cliente, Proyecto } from '@/lib/types';
+import type { Cliente, Factura, Proyecto } from '@/lib/types';
 import { getCurrentPhase, getPhaseProgress } from '@/lib/utils/phases';
 
 interface Props {
   cliente: Cliente;
   orgProyectos: Proyecto[];
+  facturas: Factura[];
   onEdit: () => void;
   onDelete: () => void;
   isPending: boolean;
@@ -21,12 +22,19 @@ const BADGE: Record<string, { color: string; bg: string; border: string; label: 
   potencial:  { color: '#b07a1e', bg: '#fbf3e0', border: '#e5c88a', label: 'Potencial' },
 };
 
-export default function ClientesFicha({ cliente, orgProyectos, onEdit, onDelete, isPending }: Props) {
+export default function ClientesFicha({ cliente, orgProyectos, facturas, onEdit, onDelete, isPending }: Props) {
   const router = useRouter();
 
   const presup = cliente.proyectos.reduce((s, p) => s + (p.presup || 0), 0);
-  const fact   = cliente.proyectos.reduce((s, p) => s + (p.fact   || 0), 0);
   const cobr   = cliente.proyectos.reduce((s, p) => s + (p.cobr   || 0), 0);
+
+  // Suma facturas reales cuyo clienteNif coincide con el NIF del cliente
+  const clienteFacturas = cliente.nif
+    ? facturas.filter(f => f.clienteNif && f.clienteNif === cliente.nif)
+    : [];
+  const fact = clienteFacturas.reduce((s, f) =>
+    s + f.lines.reduce((ls, l) => { const b = +l.base || 0; return ls + b + b * (+l.iva || 0) - b * (+l.irpf || 0); }, 0)
+  , 0);
   const pend   = fact - cobr;
   const result = presup - fact;
 

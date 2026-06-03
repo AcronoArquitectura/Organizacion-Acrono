@@ -7,6 +7,7 @@ export default async function ClientesPage() {
     <ClientesView
       initialClientes={data.clientes}
       orgProyectos={data.org.projects}
+      initialFacturas={data.contabilidad.facturas}
     />
   );
 }
