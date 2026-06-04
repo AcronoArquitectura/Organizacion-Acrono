@@ -17,6 +17,7 @@ interface Props {
 
 export default function ClientesView({ initialClientes, orgProyectos, initialFacturas, initialPresupuestos }: Props) {
   const [clientes, setClientes] = useState<Cliente[]>(initialClientes);
+  const [presupuestos, setPresupuestos] = useState<Presupuesto[]>(initialPresupuestos);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
@@ -72,7 +73,8 @@ export default function ClientesView({ initialClientes, orgProyectos, initialFac
             cliente={selected}
             orgProyectos={orgProyectos}
             facturas={initialFacturas}
-            presupuestos={initialPresupuestos}
+            presupuestos={presupuestos}
+            onPresupuestosChange={setPresupuestos}
             onEdit={() => openEdit(selected)}
             onDelete={() => handleDelete(selected.id)}
             isPending={isPending}
@@ -89,6 +91,7 @@ export default function ClientesView({ initialClientes, orgProyectos, initialFac
       {modalOpen && (
         <ClienteModal
           cliente={editingCliente}
+          existingClientes={clientes}
           orgProyectos={orgProyectos}
           onSave={handleSave}
           onClose={closeModal}

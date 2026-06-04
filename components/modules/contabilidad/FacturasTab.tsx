@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import type { Factura } from '@/lib/types';
+import { useState, useEffect } from 'react';
+import type { Factura, Cliente, Presupuesto } from '@/lib/types';
 import { recBase, recIVA, recIRPF, recTotal, fmt, trimOf, yearOf, allYears, fechaCorta } from './calculos';
 import { upsertFactura, deleteFactura } from './actions';
 import { TAGS } from './constants';
@@ -10,6 +10,9 @@ import FacturaModal from './FacturaModal';
 interface Props {
   facturas: Factura[];
   onUpdate: (f: Factura[]) => void;
+  clientes: Cliente[];
+  presupuestos: Presupuesto[];
+  initialClienteNIF?: string;
   isPending: boolean;
   startTransition: (fn: () => Promise<void>) => void;
 }
@@ -21,7 +24,7 @@ const BADGE: Record<string, { bg: string; color: string }> = {
   pendiente: { bg: '#fbf3e0', color: '#b07a1e' },
 };
 
-export default function FacturasTab({ facturas, onUpdate, isPending, startTransition }: Props) {
+export default function FacturasTab({ facturas, onUpdate, clientes, presupuestos, initialClienteNIF, isPending, startTransition }: Props) {
   const years = allYears(facturas, []);
   const curYear = new Date().getFullYear();
 
@@ -32,6 +35,13 @@ export default function FacturasTab({ facturas, onUpdate, isPending, startTransi
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<Factura | null | 'new'>('new');
   const [modalOpen, setModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (!initialClienteNIF) return;
+    setEditing(null);
+    setModalOpen(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const inYear = facturas.filter(f => yearOf(f.fecha) === year);
   const filtered = inYear.filter(f => {
@@ -45,10 +55,13 @@ export default function FacturasTab({ facturas, onUpdate, isPending, startTransi
     return true;
   }).sort((a, b) => a.fecha.localeCompare(b.fecha));
 
-  const emitido  = inYear.reduce((s, f) => s + recBase(f), 0);
-  const cobrado  = inYear.filter(f => f.estado === 'cobrada').reduce((s, f) => s + recTotal(f), 0);
-  const pendiente = inYear.filter(f => f.estado === 'pendiente').reduce((s, f) => s + recTotal(f), 0);
-  const irpf     = inYear.reduce((s, f) => s + recIRPF(f), 0);
+  // KPIs respetan el filtro de trimestre si está activo
+  const kpiBase  = trim ? inYear.filter(f => trimOf(f.fecha) === trim) : inYear;
+  const emitido  = kpiBase.reduce((s, f) => s + recBase(f), 0);
+  const ivaTotal = kpiBase.reduce((s, f) => s + recIVA(f), 0);
+  const cobrado  = kpiBase.filter(f => f.estado === 'cobrada').reduce((s, f) => s + recTotal(f), 0);
+  const pendiente = kpiBase.filter(f => f.estado === 'pendiente').reduce((s, f) => s + recTotal(f), 0);
+  const irpf     = kpiBase.reduce((s, f) => s + recIRPF(f), 0);
 
   function openNew() {
     setEditing(null);
@@ -114,8 +127,10 @@ export default function FacturasTab({ facturas, onUpdate, isPending, startTransi
       </div>
 
       {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 16 }}>
-        <div style={kpiStyle()}><div style={kpiLbl}>Emitido {year}</div><div style={kpiVal()}>{fmt(emitido)}</div></div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 10, marginBottom: 16 }}>
+        <div style={kpiStyle()}><div style={kpiLbl}>Base imp. {trim || year}</div><div style={kpiVal()}>{fmt(emitido)}</div></div>
+        <div style={kpiStyle()}><div style={kpiLbl}>Total IVA</div><div style={kpiVal()}>{fmt(ivaTotal)}</div></div>
+        <div style={kpiStyle()}><div style={kpiLbl}>Emitido c/IVA</div><div style={kpiVal()}>{fmt(emitido + ivaTotal)}</div></div>
         <div style={kpiStyle()}><div style={kpiLbl}>Cobrado</div><div style={kpiVal('#2e7d46')}>{fmt(cobrado)}</div></div>
         <div style={kpiStyle()}><div style={kpiLbl}>Pendiente cobro</div><div style={kpiVal('#b07a1e')}>{fmt(pendiente)}</div></div>
         <div style={kpiStyle()}><div style={kpiLbl}>IRPF retenido</div><div style={kpiVal()}>{fmt(irpf)}</div></div>
@@ -202,6 +217,9 @@ export default function FacturasTab({ facturas, onUpdate, isPending, startTransi
         <FacturaModal
           factura={editing as Factura | null}
           facturas={facturas}
+          clientes={clientes}
+          presupuestos={presupuestos}
+          initialClienteNIF={editing === null ? initialClienteNIF : undefined}
           onSave={handleSave}
           onDelete={handleDelete}
           onClose={() => setModalOpen(false)}

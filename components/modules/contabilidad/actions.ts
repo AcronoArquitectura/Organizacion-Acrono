@@ -25,21 +25,26 @@ export async function deleteFactura(id: string): Promise<Factura[]> {
 
 // ── Gastos (auto-crea proveedor si es nuevo) ──────────────────────────────────
 
-export async function upsertGasto(g: Gasto): Promise<{ gastos: Gasto[]; proveedores: Proveedor[] }> {
+export async function upsertGasto(g: Gasto, proveedorNif?: string): Promise<{ gastos: Gasto[]; proveedores: Proveedor[] }> {
   const [gastos, proveedores] = await Promise.all([getGastos(), getProveedores()]);
 
   const idx = gastos.findIndex(x => x.id === g.id);
   if (idx >= 0) gastos[idx] = g; else gastos.push(g);
 
-  // Auto-añadir proveedor si no existe
+  // Auto-añadir proveedor si no existe; actualizar NIF si está vacío
   const name = (g.proveedor || '').trim();
   if (name && name !== '—') {
-    const exists = proveedores.find(p => p.nombre.trim().toLowerCase() === name.toLowerCase());
-    if (!exists) {
+    const existIdx = proveedores.findIndex(p => p.nombre.trim().toLowerCase() === name.toLowerCase());
+    if (existIdx >= 0) {
+      if (proveedorNif && !proveedores[existIdx].nif) {
+        proveedores[existIdx] = { ...proveedores[existIdx], nif: proveedorNif };
+        await saveProveedores(proveedores);
+      }
+    } else {
       proveedores.push({
         id: 'p_' + Date.now(),
         nombre: name,
-        nif: '',
+        nif: proveedorNif ?? '',
         categoria: g.categoria || guessCategoria(g.concepto, name),
         nota: '',
       });

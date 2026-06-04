@@ -8,7 +8,7 @@ import { IVA_OPTS, IRPF_OPTS, CATEGORIAS_GASTO } from './constants';
 interface Props {
   gasto: Gasto | null;
   proveedores: Proveedor[];
-  onSave: (g: Gasto) => void;
+  onSave: (g: Gasto, nif: string) => void;
   onDelete: (id: string) => void;
   onClose: () => void;
   isPending: boolean;
@@ -36,6 +36,10 @@ export default function GastoModal({ gasto, proveedores, onSave, onDelete, onClo
   const [numero, setNumero] = useState(gasto?.numero ?? '');
   const [fecha, setFecha]   = useState(gasto?.fecha ?? today());
   const [proveedor, setProveedor] = useState(gasto?.proveedor ?? '');
+  const [proveedorNif, setProveedorNif] = useState(() => {
+    if (!gasto?.proveedor) return '';
+    return proveedores.find(p => p.nombre.trim().toLowerCase() === (gasto.proveedor ?? '').trim().toLowerCase())?.nif ?? '';
+  });
   const [concepto, setConcepto]   = useState(gasto?.concepto ?? '');
   const [estado, setEstado] = useState<Gasto['estado']>(gasto?.estado ?? 'pagada');
   const [categoria, setCategoria] = useState(gasto?.categoria ?? '');
@@ -44,10 +48,13 @@ export default function GastoModal({ gasto, proveedores, onSave, onDelete, onClo
 
   function onProveedorChange(v: string) {
     setProveedor(v);
-    if (!categoria) {
-      const p = proveedores.find(x => x.nombre.trim().toLowerCase() === v.trim().toLowerCase());
-      if (p?.categoria) setCategoria(p.categoria);
-      else if (v) setCategoria(guessCategoria(concepto, v));
+    const p = proveedores.find(x => x.nombre.trim().toLowerCase() === v.trim().toLowerCase());
+    if (p) {
+      setProveedorNif(p.nif ?? '');
+      if (!categoria && p.categoria) setCategoria(p.categoria);
+    } else {
+      setProveedorNif('');
+      if (!categoria && v) setCategoria(guessCategoria(concepto, v));
     }
   }
 
@@ -79,7 +86,7 @@ export default function GastoModal({ gasto, proveedores, onSave, onDelete, onClo
       estado, categoria: categoria.trim(), nota: nota.trim(),
       tags: gasto?.tags ?? [],
       lines: parsedLines,
-    });
+    }, proveedorNif.trim());
   }
 
   const row2: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 };
@@ -103,15 +110,22 @@ export default function GastoModal({ gasto, proveedores, onSave, onDelete, onClo
             </div>
           </div>
 
-          <div style={FG}><label style={LBL}>Proveedor</label>
-            <input style={INP} list="prov-datalist" value={proveedor}
-              onChange={e => onProveedorChange(e.target.value)}
-              placeholder="Selecciona o escribe uno nuevo" autoComplete="off" />
-            <datalist id="prov-datalist">
-              {[...new Set(proveedores.map(p => p.nombre))].sort().map(n => (
-                <option key={n} value={n} />
-              ))}
-            </datalist>
+          <div style={{ ...row2, marginBottom: 14 }}>
+            <div style={FG}><label style={LBL}>Proveedor</label>
+              <input style={INP} list="prov-datalist" value={proveedor}
+                onChange={e => onProveedorChange(e.target.value)}
+                placeholder="Selecciona o escribe uno nuevo" autoComplete="off" />
+              <datalist id="prov-datalist">
+                {[...new Set(proveedores.map(p => p.nombre))].sort().map(n => (
+                  <option key={n} value={n} />
+                ))}
+              </datalist>
+            </div>
+            <div style={FG}><label style={LBL}>NIF / CIF proveedor</label>
+              <input style={INP} value={proveedorNif}
+                onChange={e => setProveedorNif(e.target.value)}
+                placeholder="A12345678" autoComplete="off" />
+            </div>
           </div>
 
           <div style={FG}><label style={LBL}>Concepto</label>

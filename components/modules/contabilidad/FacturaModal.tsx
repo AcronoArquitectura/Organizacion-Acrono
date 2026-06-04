@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import type { Factura, FacturaLine } from '@/lib/types';
+import { useState, useEffect, useRef } from 'react';
+import type { Factura, FacturaLine, Cliente, Presupuesto } from '@/lib/types';
 import { fmt, addOneMonth, genFacturaNumero, trimOf } from './calculos';
 import { IVA_OPTS, IRPF_OPTS, PIE_LEGAL_DEFAULT, TAGS } from './constants';
 import { openFacturaPDF } from './facturaPDF';
@@ -9,6 +9,9 @@ import { openFacturaPDF } from './facturaPDF';
 interface Props {
   factura: Factura | null;
   facturas: Factura[];
+  clientes: Cliente[];
+  presupuestos: Presupuesto[];
+  initialClienteNIF?: string;
   onSave: (f: Factura) => void;
   onDelete: (id: string) => void;
   onClose: () => void;
@@ -33,7 +36,7 @@ function toLines(f: Factura | null): Line[] {
   return f.lines.map(l => ({ base: String(l.base), iva: +l.iva, irpf: +l.irpf, desc: l.desc ?? '' }));
 }
 
-export default function FacturaModal({ factura, facturas, onSave, onDelete, onClose, isPending }: Props) {
+export default function FacturaModal({ factura, facturas, clientes, presupuestos, initialClienteNIF, onSave, onDelete, onClose, isPending }: Props) {
   const isNew = !factura;
   const hoy = today();
 
@@ -52,6 +55,31 @@ export default function FacturaModal({ factura, facturas, onSave, onDelete, onCl
   const [nota, setNota] = useState(factura?.nota ?? '');
   const [tags, setTags] = useState<string[]>(factura?.tags ?? []);
   const [lines, setLines] = useState<Line[]>(toLines(factura));
+  const [showSugg, setShowSugg] = useState(false);
+  const suppressing = useRef(false);
+
+  useEffect(() => {
+    if (!initialClienteNIF) return;
+    const c = clientes.find(cl => cl.nif === initialClienteNIF);
+    if (c) selectCliente(c);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function selectCliente(c: Cliente) {
+    suppressing.current = true;
+    setCliente(c.nombre);
+    setNif(c.nif);
+    setDirCalle(c.direccionCalle);
+    setDirCPCiudad(c.direccionCPCiudad);
+    setDirProvincia(c.direccionProvincia);
+    const pAcept = presupuestos.filter(p => p.estado === 'aceptado' && p.cliente.dni === c.nif);
+    if (pAcept.length > 0) setRef(pAcept[pAcept.length - 1].numero ?? '');
+    setShowSugg(false);
+  }
+
+  const suggClientes = cliente.trim().length > 0
+    ? clientes.filter(c => c.estado === 'activo' && c.nombre.toLowerCase().includes(cliente.toLowerCase())).slice(0, 7)
+    : [];
 
   function onFechaChange(v: string) {
     setFecha(v);
@@ -72,10 +100,10 @@ export default function FacturaModal({ factura, facturas, onSave, onDelete, onCl
     setTags(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   }
 
-  const total = lines.reduce((s, l) => {
-    const b = parseFloat(l.base) || 0;
-    return s + b + b * l.iva - b * l.irpf;
-  }, 0);
+  const totBase = lines.reduce((s, l) => s + (parseFloat(l.base) || 0), 0);
+  const totIva  = lines.reduce((s, l) => { const b = parseFloat(l.base) || 0; return s + b * l.iva; }, 0);
+  const totIrpf = lines.reduce((s, l) => { const b = parseFloat(l.base) || 0; return s + b * l.irpf; }, 0);
+  const total   = totBase + totIva - totIrpf;
 
   function buildFactura(): Factura {
     const parsedLines: FacturaLine[] = lines
@@ -134,8 +162,28 @@ export default function FacturaModal({ factura, facturas, onSave, onDelete, onCl
 
           <div style={SEC}>Datos del destinatario (para el PDF)</div>
 
-          <div style={FG}><label style={LBL}>Cliente / Razón social</label>
-            <input style={INP} value={cliente} onChange={e => setCliente(e.target.value)} placeholder="Nombre o razón social" />
+          <div style={{ ...FG, position: 'relative' }}>
+            <label style={LBL}>Cliente / Razón social</label>
+            <input style={INP} value={cliente} placeholder="Nombre o razón social"
+              autoComplete="off"
+              onChange={e => { setCliente(e.target.value); setShowSugg(true); suppressing.current = false; }}
+              onFocus={() => { if (!suppressing.current) setShowSugg(true); }}
+              onBlur={() => { if (!suppressing.current) setShowSugg(false); suppressing.current = false; }}
+            />
+            {showSugg && suggClientes.length > 0 && (
+              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #c8c4bc', borderRadius: 6, boxShadow: '0 4px 14px rgba(0,0,0,.12)', zIndex: 500, maxHeight: 210, overflowY: 'auto' }}>
+                {suggClientes.map(c => (
+                  <div key={c.id} onMouseDown={() => selectCliente(c)}
+                    style={{ padding: '8px 12px', fontSize: 12, cursor: 'pointer', borderBottom: '1px solid #f4f2ed', color: '#333' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = '#f5f4f0')}
+                    onMouseLeave={e => (e.currentTarget.style.background = '#fff')}
+                  >
+                    <span style={{ fontWeight: 500 }}>{c.nombre}</span>
+                    {c.nif && <span style={{ marginLeft: 8, color: '#a09e99', fontSize: 11 }}>{c.nif}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div style={{ ...row2, marginBottom: 14 }}>
             <div style={FG}><label style={LBL}>NIF / CIF</label>
@@ -178,9 +226,21 @@ export default function FacturaModal({ factura, facturas, onSave, onDelete, onCl
 
           <button onClick={addLine} style={{ height: 26, padding: '0 9px', borderRadius: 6, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', border: '1px solid #c8c4bc', background: '#fff', color: '#333' }}>+ Línea</button>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingTop: 8, borderTop: '1px solid #e0ddd5', fontSize: 12 }}>
-            <span style={{ color: '#a09e99' }}>Total factura</span>
-            <strong style={{ fontSize: 15, fontVariantNumeric: 'tabular-nums' }}>{fmt(total)}</strong>
+          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #e0ddd5' }}>
+            {[
+              { l: 'Base imponible', v: totBase, small: true },
+              { l: 'Total IVA',      v: totIva,  small: true },
+              ...(totIrpf > 0 ? [{ l: 'Total IRPF', v: -totIrpf, small: true }] : []),
+              { l: 'Total con IVA',  v: total,   small: false },
+            ].map(({ l, v, small }) => (
+              <div key={l} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: small ? 4 : 0, fontSize: small ? 11 : 12 }}>
+                <span style={{ color: small ? '#a09e99' : '#6b6a66' }}>{l}</span>
+                {small
+                  ? <span style={{ fontVariantNumeric: 'tabular-nums', color: v < 0 ? '#c0392b' : '#6b6a66' }}>{fmt(v)}</span>
+                  : <strong style={{ fontSize: 15, fontVariantNumeric: 'tabular-nums' }}>{fmt(v)}</strong>
+                }
+              </div>
+            ))}
           </div>
 
           <div style={{ ...FG, marginTop: 14 }}><label style={LBL}>Texto adicional (pie del PDF)</label>

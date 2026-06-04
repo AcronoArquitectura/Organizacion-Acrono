@@ -5,6 +5,7 @@ import type { Cliente, ProyectoCliente, Proyecto } from '@/lib/types';
 
 interface Props {
   cliente: Cliente | null;
+  existingClientes: Cliente[];
   orgProyectos: Proyecto[];
   onSave: (c: Cliente) => void;
   onClose: () => void;
@@ -26,10 +27,11 @@ const LBL: React.CSSProperties = {
 };
 const FG: React.CSSProperties = { marginBottom: 14 };
 
-export default function ClienteModal({ cliente, orgProyectos, onSave, onClose, isPending }: Props) {
+export default function ClienteModal({ cliente, existingClientes, orgProyectos, onSave, onClose, isPending }: Props) {
   const [form, setForm] = useState<Omit<Cliente, 'id'>>(
     cliente ? { ...cliente } : { ...EMPTY },
   );
+  const [nifError, setNifError] = useState('');
 
   function set<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
     setForm((prev) => ({ ...prev, [k]: v }));
@@ -37,6 +39,12 @@ export default function ClienteModal({ cliente, orgProyectos, onSave, onClose, i
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const nif = form.nif.trim();
+    if (nif) {
+      const dup = existingClientes.find(c => c.nif.trim() === nif && c.id !== cliente?.id);
+      if (dup) { setNifError(`Ya existe un cliente con este NIF: ${dup.nombre}`); return; }
+    }
+    setNifError('');
     onSave({ id: cliente?.id ?? `c_${Date.now()}`, ...form });
   }
 
@@ -100,7 +108,9 @@ export default function ClienteModal({ cliente, orgProyectos, onSave, onClose, i
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
               <div>
                 <label style={LBL}>NIF / CIF</label>
-                <input style={INP} value={form.nif} onChange={(e) => set('nif', e.target.value)} />
+                <input style={{ ...INP, ...(nifError ? { borderColor: '#c0392b' } : {}) }}
+                  value={form.nif} onChange={(e) => { set('nif', e.target.value); setNifError(''); }} />
+                {nifError && <span style={{ fontSize: 11, color: '#c0392b', marginTop: 4, display: 'block' }}>{nifError}</span>}
               </div>
               <div>
                 <label style={LBL}>Cliente desde</label>

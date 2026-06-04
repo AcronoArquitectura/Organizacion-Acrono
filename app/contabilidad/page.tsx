@@ -1,19 +1,21 @@
-import { getFacturas } from '@/lib/data/facturas';
-import { getGastos } from '@/lib/data/gastos';
-import { getProveedores } from '@/lib/data/proveedores';
+import { readAllData } from '@/lib/data/storage';
 import ContabilidadView from '@/components/modules/contabilidad/ContabilidadView';
 
-export default async function ContabilidadPage() {
-  const [facturas, gastos, proveedores] = await Promise.all([
-    getFacturas(),
-    getGastos(),
-    getProveedores(),
-  ]);
+export default async function ContabilidadPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ clienteNIF?: string }>;
+}) {
+  const { clienteNIF } = await searchParams;
+  const data = await readAllData();
   return (
     <ContabilidadView
-      initialFacturas={facturas}
-      initialGastos={gastos}
-      initialProveedores={proveedores}
+      initialFacturas={data.contabilidad.facturas}
+      initialGastos={data.contabilidad.gastos}
+      initialProveedores={data.contabilidad.proveedores}
+      clientes={data.clientes}
+      presupuestos={data.presupuestos}
+      initialClienteNIF={clienteNIF}
     />
   );
 }

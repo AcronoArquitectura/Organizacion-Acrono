@@ -176,7 +176,7 @@ export interface Presupuesto {
   numero: string;    // 'PR2026-001'
   fecha: string;     // 'YYYY-MM-DD'
   validezDias: number;
-  estado: 'borrador' | 'enviado' | 'aceptado' | 'rechazado';
+  estado: 'borrador' | 'enviado' | 'aceptado' | 'rechazado' | 'anulado';
 
   cliente: {
     nombre: string; dni: string; tel: string; email: string;

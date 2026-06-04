@@ -51,9 +51,9 @@ export default function GastosTab({ gastos, proveedores, onUpdateGastos, onUpdat
   const irpf = inYear.reduce((s, g) => s + recIRPF(g), 0);
   const pend = inYear.filter(g => g.estado === 'pendiente').reduce((s, g) => s + recTotal(g), 0);
 
-  function handleSave(g: Gasto) {
+  function handleSave(g: Gasto, nif: string) {
     startTransition(async () => {
-      const result = await upsertGasto(g);
+      const result = await upsertGasto(g, nif);
       onUpdateGastos(result.gastos);
       onUpdateProveedores(result.proveedores);
       setModalOpen(false);
