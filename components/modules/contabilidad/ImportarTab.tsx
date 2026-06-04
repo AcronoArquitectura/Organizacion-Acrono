@@ -73,14 +73,17 @@ export default function ImportarTab({ onImport }: Props) {
       try {
         const raw = JSON.parse(e.target?.result as string);
         const cont = raw?.contabilidad;
-        if (!cont || !Array.isArray(cont.facturas) || !Array.isArray(cont.gastos)) {
-          setError('El JSON no tiene el formato esperado: { contabilidad: { facturas: [...], gastos: [...] } }');
+        const hasContabilidad = cont && (Array.isArray(cont.facturas) || Array.isArray(cont.gastos) || Array.isArray(cont.proveedores));
+        const hasClientes     = Array.isArray(raw.clientes);
+        const hasProveedores  = Array.isArray(raw.proveedores);
+        if (!hasContabilidad && !hasClientes && !hasProveedores) {
+          setError('El JSON no contiene ninguna sección reconocida (contabilidad, clientes o proveedores).');
           return;
         }
         // Fusionar proveedores de contabilidad.proveedores y del nivel raíz proveedores: []
         const rawProveedores: Proveedor[] = [
-          ...(Array.isArray(cont.proveedores) ? cont.proveedores : []),
-          ...(Array.isArray(raw.proveedores)  ? raw.proveedores  : []),
+          ...(Array.isArray(cont?.proveedores) ? cont.proveedores : []),
+          ...(hasProveedores ? raw.proveedores : []),
         ];
         // Deduplicar por NIF dentro del propio archivo (NIF vacío no deduplica)
         const seenNifs = new Set<string>();
@@ -92,10 +95,10 @@ export default function ImportarTab({ onImport }: Props) {
           return true;
         });
         setPreview({
-          facturas:    cont.facturas as Factura[],
-          gastos:      cont.gastos   as Gasto[],
+          facturas:    (Array.isArray(cont?.facturas) ? cont.facturas : []) as Factura[],
+          gastos:      (Array.isArray(cont?.gastos)  ? cont.gastos  : []) as Gasto[],
           proveedores,
-          clientes:    (Array.isArray(raw.clientes) ? raw.clientes : []) as Cliente[],
+          clientes:    (hasClientes ? raw.clientes : []) as Cliente[],
         });
         setPreviewTab('facturas');
         setStage('previewing');
