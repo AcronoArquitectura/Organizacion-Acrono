@@ -77,10 +77,24 @@ export default function ImportarTab({ onImport }: Props) {
           setError('El JSON no tiene el formato esperado: { contabilidad: { facturas: [...], gastos: [...] } }');
           return;
         }
+        // Fusionar proveedores de contabilidad.proveedores y del nivel raíz proveedores: []
+        const rawProveedores: Proveedor[] = [
+          ...(Array.isArray(cont.proveedores) ? cont.proveedores : []),
+          ...(Array.isArray(raw.proveedores)  ? raw.proveedores  : []),
+        ];
+        // Deduplicar por NIF dentro del propio archivo (NIF vacío no deduplica)
+        const seenNifs = new Set<string>();
+        const proveedores = rawProveedores.filter((p: Proveedor) => {
+          const nif = (p.nif ?? '').trim();
+          if (!nif) return true;
+          if (seenNifs.has(nif)) return false;
+          seenNifs.add(nif);
+          return true;
+        });
         setPreview({
-          facturas:    cont.facturas                          as Factura[],
-          gastos:      cont.gastos                            as Gasto[],
-          proveedores: (cont.proveedores ?? [])               as Proveedor[],
+          facturas:    cont.facturas as Factura[],
+          gastos:      cont.gastos   as Gasto[],
+          proveedores,
           clientes:    (Array.isArray(raw.clientes) ? raw.clientes : []) as Cliente[],
         });
         setPreviewTab('facturas');
