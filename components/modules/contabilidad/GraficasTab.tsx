@@ -64,8 +64,8 @@ export default function GraficasTab({ facturas, gastos }: Props) {
           <div key={y} style={barRow}>
             <span style={barLabel}>{y}</span>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <div style={{ ...barTrack, height: 14 }}><div style={barFill(hist[y].ing / maxA * 100, '#333')} /></div>
-              <div style={{ ...barTrack, height: 14 }}><div style={barFill(hist[y].gas / maxA * 100, '#d8c08a')} /></div>
+              <div style={{ ...barTrack, flex: 'none', height: 14 }}><div style={barFill(hist[y].ing / maxA * 100, '#333')} /></div>
+              <div style={{ ...barTrack, flex: 'none', height: 14 }}><div style={barFill(hist[y].gas / maxA * 100, '#d8c08a')} /></div>
             </div>
             <div style={{ minWidth: 108, textAlign: 'right' }}>
               <div style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(hist[y].ing)}</div>
