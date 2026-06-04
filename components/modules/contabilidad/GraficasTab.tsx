@@ -2,7 +2,7 @@
 
 import type { Factura, Gasto } from '@/lib/types';
 import { recBase, fmt, yearOf, allYears, catColor } from './calculos';
-import { CATEGORIAS_GASTO, HIST_ANUAL } from './constants';
+import { CATEGORIAS_GASTO } from './constants';
 
 interface Props { facturas: Factura[]; gastos: Gasto[]; }
 
@@ -16,16 +16,22 @@ const barVal: React.CSSProperties = { minWidth: 96, textAlign: 'right', fontVari
 
 export default function GraficasTab({ facturas, gastos }: Props) {
   const years = allYears(facturas, gastos);
-  const year = Math.max(...years);
+  const year = years.length > 0 ? Math.max(...years) : new Date().getFullYear();
 
-  // Evolución anual (histórico + datos reales)
-  const hist = { ...HIST_ANUAL };
+  if (years.length === 0) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 180, color: '#a09e99', fontSize: 13 }}>
+        No hay facturas ni gastos registrados.
+      </div>
+    );
+  }
+
+  // Evolución anual — solo datos reales de Dropbox
+  const hist: Record<number, { ing: number; gas: number }> = {};
   years.forEach(y => {
     const fY = facturas.filter(f => yearOf(f.fecha) === y);
     const gY = gastos.filter(g => yearOf(g.fecha) === y);
-    if (fY.length || gY.length) {
-      hist[y] = { ing: fY.reduce((s, f) => s + recBase(f), 0), gas: gY.reduce((s, g) => s + recBase(g), 0) };
-    }
+    hist[y] = { ing: fY.reduce((s, f) => s + recBase(f), 0), gas: gY.reduce((s, g) => s + recBase(g), 0) };
   });
   const yrs = Object.keys(hist).map(Number).sort();
   const maxA = Math.max(...yrs.map(y => Math.max(hist[y].ing, hist[y].gas)), 1);
