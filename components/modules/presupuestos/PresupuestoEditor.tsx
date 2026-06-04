@@ -588,7 +588,8 @@ export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave
                         {tipo === 'mensual' && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                             <input type="number" style={{ ...P.inp, height: 26, fontSize: 11, width: 42 }}
-                              value={+(r.meses ?? 0)} onChange={e => setPartida(i, { meses: +e.target.value })} />
+                              value={+(r.meses ?? 0)}
+                              onChange={e => { const m = +e.target.value; setPartida(i, { meses: m }); upd({ duracionMeses: m }); }} />
                             <span style={{ fontSize: 11 }}>m</span>
                           </div>
                         )}
