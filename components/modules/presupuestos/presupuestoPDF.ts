@@ -145,7 +145,7 @@ ul{margin:2mm 0 4mm 6mm;} li{margin-bottom:1.5mm;} p{margin-bottom:2.5mm;} .ob-h
 
 function buildHTML(p: Presupuesto, base: string): string {
   const ISOTIPO     = `${base}/isotipo3.png`;
-  const ACRONO_LOGO = `${base}/logotipo.png`;
+  const ACRONO_LOGO = `${base}/logotipo_reducido.png`;
   const firmaImg = (key: string) => `${base}${FIRMAS[key] ?? ''}`;
 
   const ct = costesTotales(p);

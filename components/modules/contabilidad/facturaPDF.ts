@@ -144,7 +144,7 @@ export function openFacturaPDF(f: Factura, proforma = false): void {
   if (!f.lines?.length) { alert('Añade al menos una línea con base'); return; }
   const w = window.open('', '_blank');
   if (!w) { alert('Permite las ventanas emergentes para imprimir'); return; }
-  const logoUrl = `${window.location.origin}/logotipo.png`;
+  const logoUrl = `${window.location.origin}/logotipo_reducido.png`;
   w.document.write(buildHTML(f, logoUrl, proforma));
   w.document.close();
   w.onload = () => { w.focus(); w.print(); };
