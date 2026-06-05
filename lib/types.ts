@@ -95,6 +95,7 @@ export interface Factura {
   pieTexto: string;
   concepto: string;
   estado: 'pendiente' | 'cobrada';
+  tipo?: 'factura' | 'proforma';
   nota: string;
   tags: string[];
   lines: FacturaLine[];

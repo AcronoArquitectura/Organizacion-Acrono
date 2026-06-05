@@ -1,7 +1,6 @@
 // Generación PDF de factura — portado de contabilidad.html (función facturaPrintHTML)
 // Misma técnica: window.open() + window.print()
-import type { Factura, Presupuesto } from '@/lib/types';
-import { calcPartidasDef } from '@/lib/utils/coag';
+import type { Factura } from '@/lib/types';
 import { EMISOR, BANCO } from './constants';
 
 const esc = (s: string) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -140,37 +139,12 @@ thead th:nth-child(5){width:108px;}
 </div></body></html>`;
 }
 
-export function openFacturaPDF(f: Factura, proforma = false): void {
+export function openFacturaPDF(f: Factura): void {
   if (!f.lines?.length) { alert('Añade al menos una línea con base'); return; }
   const w = window.open('', '_blank');
   if (!w) { alert('Permite las ventanas emergentes para imprimir'); return; }
   const logoUrl = `${window.location.origin}/logotipo_reducido.png`;
-  w.document.write(buildHTML(f, logoUrl, proforma));
+  w.document.write(buildHTML(f, logoUrl, f.tipo === 'proforma'));
   w.document.close();
   w.onload = () => { w.focus(); w.print(); };
-}
-
-export function openProformaFromPresupuesto(p: Presupuesto): void {
-  const partidas = p.partidas.length > 0 ? p.partidas : calcPartidasDef(p);
-  const lines = partidas
-    .filter(x => (x.tipo === 'fijo' || x.tipo === 'mensual') && (x.importe ?? 0) > 0)
-    .map(x => ({
-      base: x.tipo === 'mensual' ? (x.importe ?? 0) * (x.meses ?? 1) : (x.importe ?? 0),
-      iva: 0.21 as number,
-      irpf: 0 as number,
-      desc: x.concepto + (x.tipo === 'mensual' && x.meses ? ` (${x.meses} meses)` : ''),
-    }));
-  if (!lines.length) { alert('No hay partidas con importe en este presupuesto'); return; }
-  const f: Factura = {
-    id: '', numero: '', fecha: p.fecha, vencimiento: '',
-    cliente: p.cliente.nombre, clienteNif: p.cliente.dni,
-    clienteDireccionCalle: p.cliente.dir1,
-    clienteDireccionCPCiudad: p.cliente.dir2,
-    clienteDireccionProvincia: p.cliente.dir3,
-    refPresupuesto: p.numero,
-    pieTexto: '', concepto: p.proyecto.titulo || '',
-    estado: 'pendiente', nota: '', tags: [],
-    lines,
-  };
-  openFacturaPDF(f, true);
 }

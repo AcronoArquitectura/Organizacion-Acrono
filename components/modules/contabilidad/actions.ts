@@ -159,6 +159,7 @@ function normalizeFactura(f: Factura): Factura {
     pieTexto:       String(raw.pieTexto       ?? ''),
     concepto:       String(raw.concepto       ?? ''),
     estado:         raw.estado === 'cobrada' ? 'cobrada' : 'pendiente',
+    tipo:           raw.tipo === 'proforma' ? 'proforma' : 'factura',
     nota:           String(raw.nota           ?? ''),
     tags:           Array.isArray(raw.tags) ? (raw.tags as string[]) : [],
     lines,

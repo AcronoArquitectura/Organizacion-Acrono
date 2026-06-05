@@ -35,6 +35,7 @@ export default function FacturasTab({ facturas, onUpdate, clientes, presupuestos
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<Factura | null | 'new'>('new');
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalTipo, setModalTipo] = useState<'factura' | 'proforma'>('factura');
 
   useEffect(() => {
     if (!initialClienteNIF) return;
@@ -65,11 +66,19 @@ export default function FacturasTab({ facturas, onUpdate, clientes, presupuestos
 
   function openNew() {
     setEditing(null);
+    setModalTipo('factura');
+    setModalOpen(true);
+  }
+
+  function openNewProforma() {
+    setEditing(null);
+    setModalTipo('proforma');
     setModalOpen(true);
   }
 
   function openEdit(f: Factura) {
     setEditing(f);
+    setModalTipo(f.tipo ?? 'factura');
     setModalOpen(true);
   }
 
@@ -124,6 +133,10 @@ export default function FacturasTab({ facturas, onUpdate, clientes, presupuestos
           style={{ height: 30, padding: '0 13px', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', background: '#333', color: '#fff', border: 'none' }}>
           + Nueva factura
         </button>
+        <button onClick={openNewProforma} disabled={isPending}
+          style={{ height: 30, padding: '0 13px', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', background: '#fff', color: '#c0392b', border: '1px solid #e3b4ae' }}>
+          + Nueva proforma
+        </button>
       </div>
 
       {/* KPIs */}
@@ -176,7 +189,12 @@ export default function FacturasTab({ facturas, onUpdate, clientes, presupuestos
                         onClick={() => openEdit(f)}
                         onMouseEnter={e => (e.currentTarget.style.background = '#faf9f6')}
                         onMouseLeave={e => (e.currentTarget.style.background = '')}>
-                        <td style={{ padding: '9px 12px', fontSize: 12 }}>{f.numero}</td>
+                        <td style={{ padding: '9px 12px', fontSize: 12 }}>
+                          {f.numero}
+                          {f.tipo === 'proforma' && (
+                            <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 8, color: '#c0392b', background: '#fdecea', border: '1px solid #e3b4ae' }}>Proforma</span>
+                          )}
+                        </td>
                         <td style={{ padding: '9px 12px', fontSize: 12, color: '#a09e99' }}>{fechaCorta(f.fecha)}</td>
                         <td style={{ padding: '9px 12px', fontSize: 12 }}>
                           <div>{f.cliente !== '—' ? f.cliente : <span style={{ color: '#a09e99' }}>—</span>}</div>
@@ -220,6 +238,7 @@ export default function FacturasTab({ facturas, onUpdate, clientes, presupuestos
           clientes={clientes}
           presupuestos={presupuestos}
           initialClienteNIF={editing === null ? initialClienteNIF : undefined}
+          initialTipo={editing === null ? modalTipo : undefined}
           onSave={handleSave}
           onDelete={handleDelete}
           onClose={() => setModalOpen(false)}

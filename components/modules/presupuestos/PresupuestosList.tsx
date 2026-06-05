@@ -4,7 +4,6 @@ import { useState } from 'react';
 import type { Presupuesto } from '@/lib/types';
 import { honorariosBase, calcPartidasDef } from '@/lib/utils/coag';
 import { openPresupuestoPDF } from './presupuestoPDF';
-import { openProformaFromPresupuesto } from '@/components/modules/contabilidad/facturaPDF';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
@@ -106,10 +105,6 @@ export default function PresupuestosList({ presupuestos, onNew, onEdit, onDelete
                         <button onClick={() => openPresupuestoPDF(p)}
                           style={{ height: 26, padding: '0 10px', borderRadius: 6, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', border: '1px solid #c8c4bc', background: '#fff', color: '#333' }}>
                           PDF
-                        </button>
-                        <button onClick={() => openProformaFromPresupuesto(p)}
-                          style={{ height: 26, padding: '0 10px', borderRadius: 6, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', border: '1px solid #e3b4ae', background: '#fff', color: '#c0392b' }}>
-                          Proforma
                         </button>
                         <button onClick={() => onDelete(p.id)} disabled={isPending}
                           style={{ height: 26, padding: '0 8px', borderRadius: 6, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', border: '1px solid #e3b4ae', background: 'transparent', color: '#c0392b' }}>
