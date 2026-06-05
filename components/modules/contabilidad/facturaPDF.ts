@@ -1,6 +1,7 @@
 // Generación PDF de factura — portado de contabilidad.html (función facturaPrintHTML)
 // Misma técnica: window.open() + window.print()
-import type { Factura } from '@/lib/types';
+import type { Factura, Presupuesto } from '@/lib/types';
+import { calcPartidasDef } from '@/lib/utils/coag';
 import { EMISOR, BANCO } from './constants';
 
 const esc = (s: string) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -13,7 +14,7 @@ function fechaCorta(iso: string): string {
   return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getFullYear()).slice(-2)}`;
 }
 
-function buildHTML(f: Factura, logoUrl: string): string {
+function buildHTML(f: Factura, logoUrl: string, proforma = false): string {
   const baseTot = f.lines.reduce((s, l) => s + (+l.base || 0), 0);
   const ivaTot  = f.lines.reduce((s, l) => s + (+l.base || 0) * (+l.iva || 0), 0);
   const retTot  = f.lines.reduce((s, l) => s + (+l.base || 0) * (+l.irpf || 0), 0);
@@ -75,11 +76,11 @@ thead th:nth-child(5){width:108px;}
   <div class="head">
     <img src="${logoUrl}" alt="Ácrono arquitectura">
     <div class="meta">
-      <h1>Factura</h1>
-      <div class="ref">Ref.: ${esc(f.numero ?? '')}</div>
-      <div class="ln">Fecha de facturación: ${fechaCorta(f.fecha)}</div>
-      <div class="ln">Fecha de vencimiento: ${fechaCorta(f.vencimiento ?? '')}</div>
-      ${f.refPresupuesto ? `<div class="ln">Ref. Presupuesto: ${esc(f.refPresupuesto)}</div>` : ''}
+      <h1>Factura${proforma ? ' <span style="color:#c0392b">PROFORMA</span>' : ''}</h1>
+      <div class="ref">Ref.: ${esc(proforma ? (f.refPresupuesto || f.numero) : f.numero)}</div>
+      <div class="ln">Fecha: ${fechaCorta(f.fecha)}</div>
+      ${!proforma ? `<div class="ln">Fecha de vencimiento: ${fechaCorta(f.vencimiento ?? '')}</div>` : ''}
+      ${!proforma && f.refPresupuesto ? `<div class="ln">Ref. Presupuesto: ${esc(f.refPresupuesto)}</div>` : ''}
     </div>
   </div>
 
@@ -139,12 +140,37 @@ thead th:nth-child(5){width:108px;}
 </div></body></html>`;
 }
 
-export function openFacturaPDF(f: Factura): void {
+export function openFacturaPDF(f: Factura, proforma = false): void {
   if (!f.lines?.length) { alert('Añade al menos una línea con base'); return; }
   const w = window.open('', '_blank');
   if (!w) { alert('Permite las ventanas emergentes para imprimir'); return; }
   const logoUrl = `${window.location.origin}/logotipo.png`;
-  w.document.write(buildHTML(f, logoUrl));
+  w.document.write(buildHTML(f, logoUrl, proforma));
   w.document.close();
   w.onload = () => { w.focus(); w.print(); };
+}
+
+export function openProformaFromPresupuesto(p: Presupuesto): void {
+  const partidas = p.partidas.length > 0 ? p.partidas : calcPartidasDef(p);
+  const lines = partidas
+    .filter(x => (x.tipo === 'fijo' || x.tipo === 'mensual') && (x.importe ?? 0) > 0)
+    .map(x => ({
+      base: x.tipo === 'mensual' ? (x.importe ?? 0) * (x.meses ?? 1) : (x.importe ?? 0),
+      iva: 0.21 as number,
+      irpf: 0 as number,
+      desc: x.concepto + (x.tipo === 'mensual' && x.meses ? ` (${x.meses} meses)` : ''),
+    }));
+  if (!lines.length) { alert('No hay partidas con importe en este presupuesto'); return; }
+  const f: Factura = {
+    id: '', numero: '', fecha: p.fecha, vencimiento: '',
+    cliente: p.cliente.nombre, clienteNif: p.cliente.dni,
+    clienteDireccionCalle: p.cliente.dir1,
+    clienteDireccionCPCiudad: p.cliente.dir2,
+    clienteDireccionProvincia: p.cliente.dir3,
+    refPresupuesto: p.numero,
+    pieTexto: '', concepto: p.proyecto.titulo || '',
+    estado: 'pendiente', nota: '', tags: [],
+    lines,
+  };
+  openFacturaPDF(f, true);
 }
