@@ -38,7 +38,7 @@ function buildHTML(f: Factura, logoUrl: string, proforma = false): string {
 html,body{font-family:'Poppins',Arial,sans-serif;color:#333;font-size:11px;line-height:1.45;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 .doc{width:210mm;margin:0 auto;padding:15mm 13mm;}
 .head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:26px;}
-.head img{height:130px;width:auto;}
+.head img{width:90mm;height:auto;}
 .head .meta{text-align:right;}
 .head .meta h1{font-size:21px;font-weight:600;letter-spacing:.01em;}
 .head .meta .ref{font-size:13px;font-weight:600;margin-bottom:9px;}
