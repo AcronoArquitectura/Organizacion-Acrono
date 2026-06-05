@@ -39,10 +39,11 @@ function toLines(f: Factura | null): Line[] {
 
 export default function FacturaModal({ factura, facturas, clientes, presupuestos, initialClienteNIF, initialTipo, onSave, onDelete, onClose, isPending }: Props) {
   const isNew = !factura;
+  const isProforma = (factura?.tipo ?? initialTipo) === 'proforma';
   const hoy = today();
 
   const [fecha, setFecha] = useState(factura?.fecha ?? hoy);
-  const [numero, setNumero] = useState(factura?.numero ?? genFacturaNumero(hoy, facturas));
+  const [numero, setNumero] = useState(factura?.numero ?? (isProforma ? '' : genFacturaNumero(hoy, facturas)));
   const [venc, setVenc] = useState(factura?.vencimiento ?? addOneMonth(hoy));
   const [cliente, setCliente] = useState(factura?.cliente === '—' ? '' : (factura?.cliente ?? ''));
   const [nif, setNif] = useState(factura?.clienteNif ?? '');
@@ -85,7 +86,7 @@ export default function FacturaModal({ factura, facturas, clientes, presupuestos
   function onFechaChange(v: string) {
     setFecha(v);
     setVenc(addOneMonth(v));
-    if (isNew) setNumero(genFacturaNumero(v, facturas));
+    if (isNew && !isProforma) setNumero(genFacturaNumero(v, facturas));
   }
 
   function addLine() { setLines(prev => [...prev, { base: '', iva: 0.21, irpf: 0, desc: '' }]); }
@@ -160,7 +161,7 @@ export default function FacturaModal({ factura, facturas, clientes, presupuestos
 
           <div style={{ ...FG }}>
             <label style={LBL}>Nº factura</label>
-            <input style={isNew ? INP_AUTO : INP} value={numero} readOnly={isNew} onChange={e => setNumero(e.target.value)} />
+            <input style={isNew && !isProforma ? INP_AUTO : INP} value={numero} readOnly={isNew && !isProforma} onChange={e => setNumero(e.target.value)} />
           </div>
 
           <div style={SEC}>Datos del destinatario (para el PDF)</div>
