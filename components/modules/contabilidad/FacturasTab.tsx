@@ -13,6 +13,7 @@ interface Props {
   clientes: Cliente[];
   presupuestos: Presupuesto[];
   initialClienteNIF?: string;
+  initialFacturaId?: string;
   isPending: boolean;
   startTransition: (fn: () => Promise<void>) => void;
 }
@@ -24,7 +25,7 @@ const BADGE: Record<string, { bg: string; color: string }> = {
   pendiente: { bg: '#fbf3e0', color: '#b07a1e' },
 };
 
-export default function FacturasTab({ facturas, onUpdate, clientes, presupuestos, initialClienteNIF, isPending, startTransition }: Props) {
+export default function FacturasTab({ facturas, onUpdate, clientes, presupuestos, initialClienteNIF, initialFacturaId, isPending, startTransition }: Props) {
   const years = allYears(facturas, []);
   const curYear = new Date().getFullYear();
 
@@ -38,6 +39,10 @@ export default function FacturasTab({ facturas, onUpdate, clientes, presupuestos
   const [modalTipo, setModalTipo] = useState<'factura' | 'proforma'>('factura');
 
   useEffect(() => {
+    if (initialFacturaId) {
+      const f = facturas.find(x => x.id === initialFacturaId);
+      if (f) { setEditing(f); setModalTipo(f.tipo ?? 'factura'); setModalOpen(true); return; }
+    }
     if (!initialClienteNIF) return;
     setEditing(null);
     setModalOpen(true);

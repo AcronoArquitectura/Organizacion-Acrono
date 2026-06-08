@@ -25,6 +25,7 @@ type Tab = 'org' | 'proyectos' | 'obras';
 interface Props {
   initialOrg: OrgData;
   clientes: Cliente[];
+  initialProyectoId?: string;
 }
 
 const btnStyle: React.CSSProperties = {
@@ -35,7 +36,7 @@ const btnDark: React.CSSProperties = {
   ...btnStyle, background: '#333', color: '#fff', border: '1px solid #333', fontWeight: 600,
 };
 
-export default function OrganizacionView({ initialOrg, clientes }: Props) {
+export default function OrganizacionView({ initialOrg, clientes, initialProyectoId }: Props) {
   const [tab, setTab] = useState<Tab>('proyectos');
   const [projects, setProjects] = useState<Proyecto[]>(initialOrg.projects);
   const [obras, setObras] = useState<Obra[]>(initialOrg.obras);
@@ -51,6 +52,14 @@ export default function OrganizacionView({ initialOrg, clientes }: Props) {
   const [showAuthors, setShowAuthors] = useState(false);
 
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (initialProyectoId) {
+      const p = initialOrg.projects.find(x => x.id === initialProyectoId);
+      if (p) { setTab('proyectos'); setEditProyectoId(p.id); }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const weeks = getWindowWeeks(extraWeeks);
   const today = getMondayOfWeek(new Date());

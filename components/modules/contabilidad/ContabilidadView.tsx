@@ -16,6 +16,7 @@ interface Props {
   clientes: Cliente[];
   presupuestos: Presupuesto[];
   initialClienteNIF?: string;
+  initialFacturaId?: string;
 }
 
 type Tab = 'facturas' | 'gastos' | 'proveedores' | 'resultados' | 'graficas' | 'importar';
@@ -29,7 +30,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'importar',    label: 'Importar datos' },
 ];
 
-export default function ContabilidadView({ initialFacturas, initialGastos, initialProveedores, clientes, presupuestos, initialClienteNIF }: Props) {
+export default function ContabilidadView({ initialFacturas, initialGastos, initialProveedores, clientes, presupuestos, initialClienteNIF, initialFacturaId }: Props) {
   const [tab, setTab] = useState<Tab>('facturas');
   const [facturas, setFacturas] = useState<Factura[]>(initialFacturas);
   const [gastos, setGastos] = useState<Gasto[]>(initialGastos);
@@ -57,7 +58,7 @@ export default function ContabilidadView({ initialFacturas, initialGastos, initi
 
       {/* Content */}
       <div style={{ padding: '18px 20px', maxWidth: 1320 }}>
-        {tab === 'facturas'    && <FacturasTab facturas={facturas} onUpdate={setFacturas} clientes={clientes} presupuestos={presupuestos} initialClienteNIF={initialClienteNIF} isPending={isPending} startTransition={startTransition} />}
+        {tab === 'facturas'    && <FacturasTab facturas={facturas} onUpdate={setFacturas} clientes={clientes} presupuestos={presupuestos} initialClienteNIF={initialClienteNIF} initialFacturaId={initialFacturaId} isPending={isPending} startTransition={startTransition} />}
         {tab === 'gastos'      && <GastosTab gastos={gastos} proveedores={proveedores} onUpdateGastos={setGastos} onUpdateProveedores={setProveedores} isPending={isPending} startTransition={startTransition} />}
         {tab === 'proveedores' && <ProveedoresTab proveedores={proveedores} gastos={gastos} onUpdate={setProveedores} isPending={isPending} startTransition={startTransition} />}
         {tab === 'resultados'  && <ResultadosTab facturas={facturas} gastos={gastos} />}

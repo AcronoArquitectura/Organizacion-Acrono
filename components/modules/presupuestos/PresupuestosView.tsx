@@ -11,9 +11,10 @@ interface Props {
   initialPresupuestos: Presupuesto[];
   clientes: Cliente[];
   initialClienteNif?: string;
+  initialPresupuestoId?: string;
 }
 
-export default function PresupuestosView({ initialPresupuestos, clientes, initialClienteNif }: Props) {
+export default function PresupuestosView({ initialPresupuestos, clientes, initialClienteNif, initialPresupuestoId }: Props) {
   const [presupuestos, setPresupuestos] = useState<Presupuesto[]>(initialPresupuestos);
   const [editing, setEditing] = useState<Presupuesto | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -21,6 +22,10 @@ export default function PresupuestosView({ initialPresupuestos, clientes, initia
   const isNew = editing ? !presupuestos.find(p => p.id === editing.id) : false;
 
   useEffect(() => {
+    if (initialPresupuestoId) {
+      const p = initialPresupuestos.find(x => x.id === initialPresupuestoId);
+      if (p) { setEditing(JSON.parse(JSON.stringify(p))); return; }
+    }
     if (!initialClienteNif) return;
     const c = clientes.find(cl => cl.nif === initialClienteNif);
     if (!c) return;

@@ -4,9 +4,9 @@ import ContabilidadView from '@/components/modules/contabilidad/ContabilidadView
 export default async function ContabilidadPage({
   searchParams,
 }: {
-  searchParams: Promise<{ clienteNIF?: string }>;
+  searchParams: Promise<{ clienteNIF?: string; facturaId?: string }>;
 }) {
-  const { clienteNIF } = await searchParams;
+  const { clienteNIF, facturaId } = await searchParams;
   const data = await readAllData();
   return (
     <ContabilidadView
@@ -16,6 +16,7 @@ export default async function ContabilidadPage({
       clientes={data.clientes}
       presupuestos={data.presupuestos}
       initialClienteNIF={clienteNIF}
+      initialFacturaId={facturaId}
     />
   );
 }

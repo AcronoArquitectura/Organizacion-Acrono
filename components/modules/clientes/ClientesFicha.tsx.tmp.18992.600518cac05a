@@ -276,10 +276,7 @@ export default function ClientesFicha({ cliente, orgProyectos, facturas, presupu
                 const est = ESTADO_PRESUP[p.estado] ?? ESTADO_PRESUP.borrador;
                 const anulado = p.estado === 'anulado';
                 return (
-                  <tr key={p.id} onClick={() => router.push(`/presupuestos?id=${p.id}`)}
-                    style={{ borderBottom: '1px solid #f4f2ed', opacity: anulado ? 0.6 : 1, cursor: 'pointer' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = '#faf9f6')}
-                    onMouseLeave={e => (e.currentTarget.style.background = '')}>
+                  <tr key={p.id} style={{ borderBottom: '1px solid #f4f2ed', opacity: anulado ? 0.6 : 1 }}>
                     <td style={{ padding: '8px 10px', fontVariantNumeric: 'tabular-nums', textDecoration: anulado ? 'line-through' : 'none' }}>{p.numero}</td>
                     <td style={{ padding: '8px 10px', color: '#6b6a66' }}>{p.fecha}</td>
                     <td style={{ padding: '8px 10px' }}>
