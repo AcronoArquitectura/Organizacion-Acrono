@@ -139,7 +139,7 @@ export default function FacturaModal({ factura, facturas, clientes, presupuestos
   const row2: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 };
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 300, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: '50px 16px', overflowY: 'auto' }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 300, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: '50px 16px', overflowY: 'auto' }}>
       <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 10, width: 600, maxHeight: '86vh', overflowY: 'auto', boxShadow: '0 16px 50px rgba(0,0,0,.22)' }}>
 
         {/* Header */}

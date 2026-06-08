@@ -28,6 +28,7 @@ export interface Proyecto {
   name: string;
   startDate: string; // ISO 8601
   authorId: string;
+  clienteNif?: string;
   phases: Phase[];
   meetings: Meeting[];
 }

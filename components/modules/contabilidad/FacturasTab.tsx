@@ -98,6 +98,33 @@ export default function FacturasTab({ facturas, onUpdate, clientes, presupuestos
     });
   }
 
+  function nextFacturaNumero(allFacturas: Factura[]): string {
+    const today = new Date();
+    const yy = String(today.getFullYear()).slice(2);
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const max = allFacturas
+      .filter(f => f.tipo !== 'proforma')
+      .map(f => parseInt(f.numero.split('-')[1] ?? '0', 10))
+      .filter(n => !isNaN(n))
+      .reduce((a, b) => Math.max(a, b), 0);
+    return `FA${yy}${mm}-${String(max + 1).padStart(3, '0')}`;
+  }
+
+  function handleConvertir(e: React.MouseEvent, f: Factura) {
+    e.stopPropagation();
+    if (!confirm(`¿Convertir la proforma "${f.numero}" en factura?\n\nSe le asignará el siguiente número correlativo y la fecha de hoy.`)) return;
+    const converted: Factura = {
+      ...f,
+      tipo: 'factura',
+      numero: nextFacturaNumero(facturas),
+      fecha: new Date().toISOString().slice(0, 10),
+    };
+    startTransition(async () => {
+      const updated = await upsertFactura(converted);
+      onUpdate(updated);
+    });
+  }
+
   const kpiStyle = (col?: string): React.CSSProperties => ({
     background: '#fff', border: '1px solid #e0ddd5', borderRadius: 6, padding: '12px 14px',
   });
@@ -192,7 +219,15 @@ export default function FacturasTab({ facturas, onUpdate, clientes, presupuestos
                         <td style={{ padding: '9px 12px', fontSize: 12 }}>
                           {f.numero}
                           {f.tipo === 'proforma' && (
-                            <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 8, color: '#c0392b', background: '#fdecea', border: '1px solid #e3b4ae' }}>Proforma</span>
+                            <>
+                              <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 8, color: '#c0392b', background: '#fdecea', border: '1px solid #e3b4ae' }}>Proforma</span>
+                              <button
+                                onClick={e => handleConvertir(e, f)}
+                                disabled={isPending}
+                                style={{ marginLeft: 8, fontSize: 10, padding: '1px 7px', borderRadius: 8, cursor: 'pointer', background: '#eaf3eb', color: '#2e7d46', border: '1px solid #a8d5b0', fontFamily: 'inherit', fontWeight: 600 }}>
+                                Convertir en factura
+                              </button>
+                            </>
                           )}
                         </td>
                         <td style={{ padding: '9px 12px', fontSize: 12, color: '#a09e99' }}>{fechaCorta(f.fecha)}</td>

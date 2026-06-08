@@ -131,48 +131,37 @@ export default function ClientesFicha({ cliente, orgProyectos, facturas, presupu
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-        {/* Proyectos */}
+        {/* Proyectos de Organización */}
         <div style={{ background: '#fff', border: '1px solid #e0ddd5', borderRadius: 6, padding: '16px 18px' }}>
           <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#a09e99', marginBottom: 12, fontWeight: 500 }}>
-            Proyectos vinculados
+            Proyectos en Organización
           </div>
-          {cliente.proyectos.length === 0 ? (
-            <p style={{ fontSize: 12, color: '#a09e99' }}>Sin proyectos vinculados.</p>
-          ) : (
-            cliente.proyectos.map((pj) => {
-              const orgPj = orgProyectos.find((p) => p.code === pj.ref);
-              const fase = orgPj ? getCurrentPhase(orgPj) : '—';
-              const progress = orgPj ? getPhaseProgress(orgPj) : 0;
+          {(() => {
+            const linked = orgProyectos.filter(p => p.clienteNif && p.clienteNif === cliente.nif);
+            if (linked.length === 0) return <p style={{ fontSize: 12, color: '#a09e99' }}>Sin proyectos vinculados. Asócialos desde el módulo de Organización.</p>;
+            return linked.map(p => {
+              const fase = getCurrentPhase(p);
+              const progress = getPhaseProgress(p);
               return (
-                <div key={pj.ref} style={{ paddingBottom: 12, marginBottom: 12, borderBottom: '1px solid #f4f2ed' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12.5, fontWeight: 500 }}>{pj.ref}</span>
-                    <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 9px', borderRadius: 20, border: '1px solid #e0ddd5', background: '#f5f4f0', color: '#6b6a66' }}>
-                      {fase}
-                    </span>
+                <div key={p.id} style={{ paddingBottom: 12, marginBottom: 12, borderBottom: '1px solid #f4f2ed' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 500 }}>{p.code}</span>
+                    <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 9px', borderRadius: 20, border: '1px solid #e0ddd5', background: '#f5f4f0', color: '#6b6a66' }}>{fase}</span>
                   </div>
+                  {p.name && <div style={{ fontSize: 11, color: '#6b6a66', marginBottom: 5 }}>{p.name}</div>}
                   <div style={{ height: 8, background: '#f5f4f0', border: '1px solid #e0ddd5', borderRadius: 20, overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${progress}%`, background: '#333', borderRadius: 20 }} />
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5, fontSize: 11, color: '#a09e99' }}>
-                    <span>Presup. {fmt(pj.presup)}</span>
-                    <span>{progress}%</span>
-                  </div>
+                  <div style={{ textAlign: 'right', marginTop: 4, fontSize: 11, color: '#a09e99' }}>{progress}%</div>
                 </div>
               );
-            })
-          )}
+            });
+          })()}
           <button
-            onClick={() => router.push(cliente.nif ? `/presupuestos?clienteNif=${encodeURIComponent(cliente.nif)}` : '/presupuestos')}
+            onClick={() => router.push('/organizacion')}
             style={{ height: 28, padding: '0 12px', borderRadius: 6, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', border: '1px solid #c8c4bc', background: '#fff', color: '#6b6a66', marginTop: 4 }}
           >
-            + Nuevo presupuesto
-          </button>
-          <button
-            onClick={() => router.push(cliente.nif ? `/contabilidad?clienteNIF=${encodeURIComponent(cliente.nif)}` : '/contabilidad')}
-            style={{ height: 28, padding: '0 12px', borderRadius: 6, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', border: '1px solid #c8c4bc', background: '#fff', color: '#6b6a66', marginTop: 4 }}
-          >
-            + Nueva factura
+            Ir a Organización
           </button>
         </div>
 
@@ -195,6 +184,61 @@ export default function ClientesFicha({ cliente, orgProyectos, facturas, presupu
             </div>
           )}
         </div>
+      </div>
+
+      {/* Facturas emitidas */}
+      <div style={{ background: '#fff', border: '1px solid #e0ddd5', borderRadius: 6, padding: '16px 18px', marginTop: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#a09e99', fontWeight: 500 }}>
+            Facturas emitidas
+          </div>
+          <button
+            onClick={() => router.push(cliente.nif ? `/contabilidad?clienteNIF=${encodeURIComponent(cliente.nif)}` : '/contabilidad')}
+            style={{ height: 26, padding: '0 11px', borderRadius: 6, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', border: '1px solid #c8c4bc', background: '#fff', color: '#6b6a66' }}
+          >
+            + Nueva factura
+          </button>
+        </div>
+        {clienteFacturas.length === 0 ? (
+          <p style={{ fontSize: 12, color: '#a09e99' }}>Sin facturas vinculadas.</p>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #e0ddd5' }}>
+                {['Nº', 'Fecha', 'Estado', 'Total'].map((h, i) => (
+                  <th key={h} style={{ fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: '#a09e99', fontWeight: 500, padding: '6px 10px', textAlign: i >= 3 ? 'right' : 'left' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {clienteFacturas.slice().sort((a, b) => b.fecha.localeCompare(a.fecha)).map(f => {
+                const isProforma = f.tipo === 'proforma';
+                const estadoColor = f.estado === 'cobrada'
+                  ? { color: '#2e7d46', bg: '#e8f3ec' }
+                  : { color: '#b07a1e', bg: '#fbf3e0' };
+                return (
+                  <tr key={f.id} style={{ borderBottom: '1px solid #f4f2ed' }}>
+                    <td style={{ padding: '8px 10px', fontVariantNumeric: 'tabular-nums' }}>
+                      {f.numero}
+                      {isProforma && (
+                        <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 8, color: '#c0392b', background: '#fdecea', border: '1px solid #e3b4ae' }}>Proforma</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '8px 10px', color: '#6b6a66' }}>{f.fecha}</td>
+                    <td style={{ padding: '8px 10px' }}>
+                      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 10, color: estadoColor.color, background: estadoColor.bg }}>
+                        {f.estado}
+                      </span>
+                    </td>
+                    <td style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                      {fmt(facturaTotal(f))}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* Presupuestos vinculados */}

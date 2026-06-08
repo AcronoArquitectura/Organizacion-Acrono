@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import type { Proyecto, Author, Phase, Meeting } from '@/lib/types';
+import type { Proyecto, Author, Phase, Meeting, Cliente } from '@/lib/types';
 import {
   PHASE_DEFS, DEFAULT_MEETING_TEMPLATE, getMondayOfWeek, addWeeks, dateToInput,
 } from '@/lib/utils/gantt';
@@ -25,6 +25,7 @@ interface MeetingEdit {
 interface Props {
   proyecto: Proyecto | null;
   authors: Author[];
+  clientes: Cliente[];
   onSave: (p: Proyecto) => void;
   onDelete: (id: string) => void;
   onClose: () => void;
@@ -72,7 +73,7 @@ const sectionLabel: React.CSSProperties = {
   fontWeight: 600, margin: '16px 0 6px',
 };
 
-export default function ProyectoModal({ proyecto, authors, onSave, onDelete, onClose, isPending }: Props) {
+export default function ProyectoModal({ proyecto, authors, clientes, onSave, onDelete, onClose, isPending }: Props) {
   const isNew = !proyecto;
   const defaultStart = dateToInput(getMondayOfWeek(new Date()));
 
@@ -80,6 +81,7 @@ export default function ProyectoModal({ proyecto, authors, onSave, onDelete, onC
   const [name, setName] = useState(proyecto?.name ?? '');
   const [startDate, setStartDate] = useState(proyecto ? dateToInput(new Date(proyecto.startDate)) : defaultStart);
   const [authorId, setAuthorId] = useState<string | null>(proyecto?.authorId ?? null);
+  const [clienteNif, setClienteNif] = useState(proyecto?.clienteNif ?? '');
   const [phases, setPhases] = useState<PhaseEdit[]>(
     proyecto ? buildPhasesFromProject(proyecto.phases) : buildDefaultPhases()
   );
@@ -159,6 +161,7 @@ export default function ProyectoModal({ proyecto, authors, onSave, onDelete, onC
       code, name,
       startDate: start.toISOString(),
       authorId: authorId ?? '',
+      clienteNif: clienteNif || undefined,
       phases: outPhases,
       meetings: outMeetings,
     };
@@ -168,13 +171,25 @@ export default function ProyectoModal({ proyecto, authors, onSave, onDelete, onC
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ background: '#fff', borderRadius: 10, width: 680, maxHeight: '90vh', overflowY: 'auto', padding: 26, boxShadow: '0 20px 60px rgba(0,0,0,.2)', fontFamily: 'inherit' }}>
-        <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 18 }}>{isNew ? 'Nuevo proyecto' : 'Editar proyecto'}</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+          <h2 style={{ fontSize: 15, fontWeight: 600 }}>{isNew ? 'Nuevo proyecto' : 'Editar proyecto'}</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, color: '#a09e99', lineHeight: 1, padding: 0 }}>×</button>
+        </div>
 
         {/* Datos básicos */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div><label style={labelStyle}>Código</label><input style={inputStyle} value={code} onChange={e => setCode(e.target.value)} placeholder="VU.121" /></div>
           <div><label style={labelStyle}>Nombre / descripción</label><input style={inputStyle} value={name} onChange={e => setName(e.target.value)} placeholder="Vivienda unifamiliar" /></div>
           <div><label style={labelStyle}>Fecha inicio (lunes)</label><input type="date" style={inputStyle} value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
+          <div>
+            <label style={labelStyle}>Cliente</label>
+            <select style={inputStyle} value={clienteNif} onChange={e => setClienteNif(e.target.value)}>
+              <option value="">— Sin cliente —</option>
+              {clientes.slice().sort((a, b) => a.nombre.localeCompare(b.nombre)).map(c => (
+                <option key={c.nif || c.id} value={c.nif}>{c.nombre}{c.nif ? ` (${c.nif})` : ''}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Autor principal */}

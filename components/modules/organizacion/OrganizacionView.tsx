@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useTransition, useCallback } from 'react';
-import type { Proyecto, Obra, Author } from '@/lib/types';
+import type { Proyecto, Obra, Author, Cliente } from '@/lib/types';
 import type { OrgData } from '@/lib/data/organizacion';
 import { getWindowWeeks, computeCellW, getMondayOfWeek } from '@/lib/utils/gantt';
 import GanttProyectos, { type TooltipState } from './GanttProyectos';
@@ -24,6 +24,7 @@ type Tab = 'org' | 'proyectos' | 'obras';
 
 interface Props {
   initialOrg: OrgData;
+  clientes: Cliente[];
 }
 
 const btnStyle: React.CSSProperties = {
@@ -34,7 +35,7 @@ const btnDark: React.CSSProperties = {
   ...btnStyle, background: '#333', color: '#fff', border: '1px solid #333', fontWeight: 600,
 };
 
-export default function OrganizacionView({ initialOrg }: Props) {
+export default function OrganizacionView({ initialOrg, clientes }: Props) {
   const [tab, setTab] = useState<Tab>('proyectos');
   const [projects, setProjects] = useState<Proyecto[]>(initialOrg.projects);
   const [obras, setObras] = useState<Obra[]>(initialOrg.obras);
@@ -213,6 +214,7 @@ export default function OrganizacionView({ initialOrg }: Props) {
         <ProyectoModal
           proyecto={editProyectoId === 'new' ? null : (projects.find(p => p.id === editProyectoId) ?? null)}
           authors={authors}
+          clientes={clientes}
           onSave={handleSaveProyecto}
           onDelete={handleDeleteProyecto}
           onClose={() => setEditProyectoId(null)}

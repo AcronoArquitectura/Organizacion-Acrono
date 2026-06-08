@@ -76,7 +76,7 @@ thead th:nth-child(5){width:108px;}
     <img src="${logoUrl}" alt="Ácrono arquitectura">
     <div class="meta">
       <h1>Factura${proforma ? ' <span style="color:#c0392b">PROFORMA</span>' : ''}</h1>
-      <div class="ref">Ref.: ${esc(proforma ? (f.refPresupuesto || f.numero) : f.numero)}</div>
+      <div class="ref">Ref.: ${esc(f.numero)}</div>
       <div class="ln">Fecha: ${fechaCorta(f.fecha)}</div>
       ${!proforma ? `<div class="ln">Fecha de vencimiento: ${fechaCorta(f.vencimiento ?? '')}</div>` : ''}
       ${!proforma && f.refPresupuesto ? `<div class="ln">Ref. Presupuesto: ${esc(f.refPresupuesto)}</div>` : ''}

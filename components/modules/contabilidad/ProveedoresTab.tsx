@@ -145,7 +145,7 @@ function ProveedorModal({ proveedor, gastos, onSave, onDelete, onClose, isPendin
   const INP2: React.CSSProperties = { width: '100%', height: 34, padding: '0 8px', border: '1px solid #c8c4bc', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none', background: '#fff', color: '#333' };
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 300, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: '50px 16px' }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 300, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: '50px 16px' }}>
       <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 10, width: 480, boxShadow: '0 16px 50px rgba(0,0,0,.22)' }}>
         <div style={{ padding: '18px 22px 14px', borderBottom: '1px solid #e0ddd5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ fontSize: 15, fontWeight: 600 }}>{isNew ? 'Nuevo proveedor' : 'Editar proveedor'}</h2>

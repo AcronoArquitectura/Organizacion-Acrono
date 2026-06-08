@@ -64,7 +64,6 @@ export default function ClienteModal({ cliente, existingClientes, orgProyectos, 
 
   return (
     <div
-      onClick={onClose}
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 300, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: '42px 16px', overflowY: 'auto' }}
     >
       <div
