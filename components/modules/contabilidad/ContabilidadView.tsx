@@ -6,7 +6,6 @@ import FacturasTab from './FacturasTab';
 import GastosTab from './GastosTab';
 import ProveedoresTab from './ProveedoresTab';
 import ResultadosTab from './ResultadosTab';
-import GraficasTab from './GraficasTab';
 import ImportarTab from './ImportarTab';
 
 interface Props {
@@ -19,14 +18,13 @@ interface Props {
   initialFacturaId?: string;
 }
 
-type Tab = 'facturas' | 'gastos' | 'proveedores' | 'resultados' | 'graficas' | 'importar';
+type Tab = 'facturas' | 'gastos' | 'proveedores' | 'resultados' | 'importar';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'facturas',    label: 'Facturas emitidas' },
   { id: 'gastos',      label: 'Gastos' },
   { id: 'proveedores', label: 'Proveedores' },
   { id: 'resultados',  label: 'Resultados' },
-  { id: 'graficas',    label: 'Gráficas anuales' },
   { id: 'importar',    label: 'Importar datos' },
 ];
 
@@ -62,7 +60,6 @@ export default function ContabilidadView({ initialFacturas, initialGastos, initi
         {tab === 'gastos'      && <GastosTab gastos={gastos} proveedores={proveedores} onUpdateGastos={setGastos} onUpdateProveedores={setProveedores} isPending={isPending} startTransition={startTransition} />}
         {tab === 'proveedores' && <ProveedoresTab proveedores={proveedores} gastos={gastos} onUpdate={setProveedores} isPending={isPending} startTransition={startTransition} />}
         {tab === 'resultados'  && <ResultadosTab facturas={facturas} gastos={gastos} />}
-        {tab === 'graficas'    && <GraficasTab facturas={facturas} gastos={gastos} />}
         {tab === 'importar'    && (
           <ImportarTab
             onImport={({ facturas: f, gastos: g, proveedores: p }) => {
