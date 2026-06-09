@@ -1,7 +1,7 @@
 'use client';
 
 import type { Presupuesto } from '@/lib/types';
-import { honorariosLineas, honorariosBase, honorariosExtrasTotal, pemTotal } from '@/lib/utils/coag';
+import { honorariosExtrasTotal, pemTotal } from '@/lib/utils/coag';
 
 const fmt = (n: number) =>
   (Math.round((+n || 0) * 100) / 100).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
@@ -22,12 +22,13 @@ const k: React.CSSProperties = { color: '#a09e99', fontSize: 11 };
 const v: React.CSSProperties = { fontVariantNumeric: 'tabular-nums' };
 
 export default function PresupuestoSummary({ p, isNew, onSave, onPDF, onDelete, onUpd, isPending }: Props) {
-  const lines = honorariosLineas(p);
-  const doLine = lines.find(l => l.tipo === 'mensual');
-  const fixedLines = lines.filter(l => l.tipo === 'fijo' && Math.abs(l.importe) > 0.005);
-  const extrasTotal = honorariosExtrasTotal(p);
-  const base = honorariosBase(p);
-  const pem = pemTotal(p);
+  const fijoPartidas  = p.partidas.filter(r => r.tipo === 'fijo'    && Math.abs(+(r.importe ?? 0)) > 0.005);
+  const mensualPartidas = p.partidas.filter(r => r.tipo === 'mensual');
+  const extrasTotal   = honorariosExtrasTotal(p);
+  const basePartidas  = fijoPartidas.reduce((s, r) => s + +(r.importe ?? 0), 0)
+                      + mensualPartidas.reduce((s, r) => s + +(r.importe ?? 0) * +(r.meses ?? 0), 0);
+  const base = basePartidas + extrasTotal;
+  const pem  = pemTotal(p);
 
   const inpSt: React.CSSProperties = {
     height: 30, padding: '0 8px', border: '1px solid #c8c4bc', borderRadius: 6,
@@ -52,25 +53,29 @@ export default function PresupuestoSummary({ p, isNew, onSave, onPDF, onDelete, 
           Resumen de honorarios
         </div>
 
-        {fixedLines.map(l => (
-          <div key={l.key} style={kv}>
-            <span style={k}>{l.label}</span>
-            <span style={v}>{fmt(l.importe)}</span>
+        {fijoPartidas.map((r, i) => (
+          <div key={i} style={kv}>
+            <span style={k}>{r.concepto || `Partida ${i + 1}`}</span>
+            <span style={v}>{fmt(+(r.importe ?? 0))}</span>
           </div>
         ))}
 
-        {doLine && doLine.importe > 0 && (
-          <div style={kv}>
-            <span style={k}>Dirección de obra</span>
-            <span style={v}>{fmt(doLine.importe)}/mes × {doLine.meses} = {fmt(doLine.importe * (doLine.meses ?? 0))}</span>
+        {mensualPartidas.map((r, i) => +(r.importe ?? 0) > 0 && (
+          <div key={`m${i}`} style={kv}>
+            <span style={k}>{r.concepto || 'Dirección de obra'}</span>
+            <span style={v}>{fmt(+(r.importe ?? 0))}/mes × {r.meses ?? 0} = {fmt(+(r.importe ?? 0) * +(r.meses ?? 0))}</span>
           </div>
-        )}
+        ))}
 
         {extrasTotal > 0 && (
           <div style={kv}>
             <span style={k}>Honorarios extra</span>
             <span style={v}>{fmt(extrasTotal)}</span>
           </div>
+        )}
+
+        {p.partidas.length === 0 && extrasTotal === 0 && (
+          <div style={{ fontSize: 11, color: '#a09e99', padding: '6px 0' }}>Sin partidas. Pulsa "↺ Recalcular" o añade líneas manualmente.</div>
         )}
 
         <div style={{ ...kv, borderTop: '1px solid #e0ddd5', borderBottom: 'none', marginTop: 4, paddingTop: 8, fontWeight: 600 }}>
