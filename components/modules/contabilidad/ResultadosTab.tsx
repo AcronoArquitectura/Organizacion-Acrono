@@ -8,12 +8,28 @@ import { CATEGORIAS_GASTO } from './constants';
 interface Props { facturas: Factura[]; gastos: Gasto[]; }
 
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const YEAR_COLORS = ['#4a7eb5','#e07b2a','#7b5ea7','#2e7d46','#c0392b','#16a085'];
+
+type Metric   = 'ing' | 'gas' | 'net';
+type CompMode = 'prevYear' | 'avgPrev';
+
+// ── helpers ───────────────────────────────────────────────────────────────────
 
 function monthOf(fecha: string) { return new Date(fecha + 'T00:00:00').getMonth(); }
 
-function ingasYear(
+function monthlyArrays(
+  facturas: Factura[], gastos: Gasto[], year: number,
+): { ing: number[]; gas: number[] } {
+  const ing = Array(12).fill(0) as number[];
+  const gas = Array(12).fill(0) as number[];
+  facturas.filter(f => yearOf(f.fecha) === year).forEach(f => (ing[monthOf(f.fecha)] += recBase(f)));
+  gastos.filter(g => yearOf(g.fecha) === year).forEach(g => (gas[monthOf(g.fecha)] += recBase(g)));
+  return { ing, gas };
+}
+
+function ingasYtd(
   facturas: Factura[], gastos: Gasto[], year: number, maxMonth?: number,
-): { ing: number; gas: number } {
+) {
   const ok = (fecha: string) =>
     yearOf(fecha) === year && (maxMonth === undefined || monthOf(fecha) <= maxMonth);
   return {
@@ -22,87 +38,266 @@ function ingasYear(
   };
 }
 
-// ── SVG: grouped bar chart (annual) ──────────────────────────────────────────
+function fmtK(v: number): string {
+  const abs = Math.abs(v);
+  const s   = v < 0 ? '-' : '';
+  if (abs >= 1000) return s + Math.round(abs / 1000) + 'k';
+  return s + Math.round(abs).toString();
+}
 
-function BarChartAnual({ data }: {
-  data: { year: number; ing: number; gas: number; partial: boolean }[];
-}) {
-  const H = 180, PL = 52, PB = 26, PT = 12, PR = 16;
-  const W = Math.max(data.length * 80 + PL + PR, 360);
-  const cW = W - PL - PR, cH = H - PB - PT;
-  const maxVal = Math.max(...data.flatMap(d => [d.ing, d.gas]), 1);
-  const groupW = cW / data.length;
-  const barW = Math.min((groupW - 14) / 2, 30);
-  const fmtK = (v: number) => v === 0 ? '0' : v >= 1000 ? Math.round(v / 1000) + 'k' : Math.round(v).toString();
+function yTicks(minVal: number, maxVal: number): number[] {
+  const range = maxVal - minVal || 1;
+  const raw   = range / 4;
+  const mag   = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step  = Math.ceil(raw / mag) * mag;
+  const t0    = Math.floor(minVal / step) * step;
+  const ticks: number[] = [];
+  for (let t = t0; t <= maxVal + step * 0.01; t += step) ticks.push(t);
+  return ticks;
+}
+
+function makeYScale(minVal: number, maxVal: number, chartH: number, PT: number) {
+  const range = maxVal - minVal || 1;
+  return (v: number) => PT + chartH - ((v - minVal) / range) * chartH;
+}
+
+// ── Gráfica 1: columnas mensuales + línea resultado ───────────────────────────
+
+function ChartMensual({
+  ing, gas, partial, curMonth,
+}: { ing: number[]; gas: number[]; partial: boolean; curMonth: number }) {
+  const W = 700, H = 230, PL = 56, PR = 20, PT = 16, PB = 30;
+  const cW = W - PL - PR, cH = H - PT - PB;
+  const visible = partial ? curMonth + 1 : 12;
+
+  const net     = ing.map((v, i) => v - gas[i]);
+  const allVals = [
+    ...ing.slice(0, visible), ...gas.slice(0, visible), ...net.slice(0, visible), 0,
+  ];
+  const minVal = Math.min(...allVals);
+  const maxVal = Math.max(...allVals, 1);
+  const yS     = makeYScale(minVal, maxVal, cH, PT);
+  const zeroY  = yS(0);
+  const ticks  = yTicks(minVal, maxVal);
+
+  const groupW = cW / 12;
+  const barW   = Math.min((groupW - 10) / 2, 22);
+  const gap    = 4;
+
+  // Polyline for net result
+  const netPts = net.slice(0, visible)
+    .map((v, i) => `${PL + i * groupW + groupW / 2},${yS(v)}`).join(' ');
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: H, overflow: 'visible' }}>
-      {[0, 0.25, 0.5, 0.75, 1].map(t => {
-        const y = PT + cH - t * cH;
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: H }}>
+      {/* Y grid */}
+      {ticks.map(t => {
+        const y = yS(t); if (y < PT - 6 || y > PT + cH + 6) return null;
         return (
           <g key={t}>
-            <line x1={PL} x2={W - PR} y1={y} y2={y} stroke={t === 0 ? '#d0cec8' : '#f0eee9'} strokeWidth={1} />
-            <text x={PL - 5} y={y + 3} textAnchor="end" fontSize={9} fill="#a09e99">{fmtK(t * maxVal)}</text>
+            <line x1={PL} x2={W - PR} y1={y} y2={y}
+              stroke={t === 0 ? '#c8c4bc' : '#f0eee9'} strokeWidth={t === 0 ? 1 : 0.8} />
+            <text x={PL - 5} y={y + 3} textAnchor="end" fontSize={9} fill="#a09e99">{fmtK(t)}</text>
           </g>
         );
       })}
-      {data.map((d, i) => {
-        const cx = PL + i * groupW + groupW / 2;
-        const bx = cx - barW - 2;
-        const iH = (d.ing / maxVal) * cH;
-        const gH = (d.gas / maxVal) * cH;
+
+      {/* Bars */}
+      {MESES.map((m, i) => {
+        if (i >= visible) return null;
+        const cx  = PL + i * groupW + groupW / 2;
+        const bx  = cx - barW - gap / 2;
+        const iH  = Math.max(Math.abs(yS(ing[i]) - zeroY), 0);
+        const gH  = Math.max(Math.abs(yS(gas[i]) - zeroY), 0);
+        const iy  = Math.min(yS(ing[i]), zeroY);
+        const gy  = Math.min(yS(gas[i]), zeroY);
         return (
-          <g key={d.year}>
-            <rect x={bx}          y={PT + cH - iH} width={barW} height={iH} fill={d.partial ? '#a8a8a8' : '#333'}    rx={2} opacity={d.partial ? 0.6 : 1} />
-            <rect x={bx + barW + 4} y={PT + cH - gH} width={barW} height={gH} fill={d.partial ? '#ddd0a0' : '#c8a844'} rx={2} opacity={d.partial ? 0.6 : 1} />
-            <text x={cx} y={H - 7} textAnchor="middle" fontSize={10} fill={d.partial ? '#a09e99' : '#6b6a66'}>
-              {d.year}{d.partial ? ' *' : ''}
-            </text>
+          <g key={m}>
+            {iH > 0 && <rect x={bx}          y={iy} width={barW} height={iH} fill="#333"    rx={1.5} />}
+            {gH > 0 && <rect x={bx + barW + gap} y={gy} width={barW} height={gH} fill="#c8a844" rx={1.5} />}
+            <text x={cx} y={H - 9} textAnchor="middle" fontSize={9} fill="#a09e99">{m}</text>
           </g>
+        );
+      })}
+
+      {/* Net result line */}
+      {visible > 1 && (
+        <polyline points={netPts} fill="none" stroke="#2e7d46"
+          strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+      )}
+      {net.slice(0, visible).map((v, i) => (
+        <circle key={i} cx={PL + i * groupW + groupW / 2} cy={yS(v)} r={3} fill="#2e7d46" />
+      ))}
+    </svg>
+  );
+}
+
+// ── Gráfica 2: líneas comparativas por año ────────────────────────────────────
+
+function ChartLineas({
+  yearData, allYears, selectedYear, metric, compMode, curYear, curMonth,
+}: {
+  yearData: Record<number, { ing: number[]; gas: number[] }>;
+  allYears: number[];
+  selectedYear: number;
+  metric: Metric;
+  compMode: CompMode;
+  curYear: number;
+  curMonth: number;
+}) {
+  const W = 700, H = 210, PL = 56, PR = 20, PT = 16, PB = 30;
+  const cW = W - PL - PR, cH = H - PT - PB;
+  const groupW = cW / 12;
+
+  function metricVal(d: { ing: number[]; gas: number[] }, i: number): number {
+    if (metric === 'ing') return d.ing[i];
+    if (metric === 'gas') return d.gas[i];
+    return d.ing[i] - d.gas[i];
+  }
+
+  const prevYears = allYears.filter(y => y < selectedYear);
+
+  type LineDef = { key: string; vals: (number | null)[]; color: string; dashed: boolean; label: string };
+  const lines: LineDef[] = [];
+
+  // Selected year
+  const selD = yearData[selectedYear];
+  if (selD) {
+    lines.push({
+      key: String(selectedYear),
+      vals: Array.from({ length: 12 }, (_, i) =>
+        selectedYear === curYear && i > curMonth ? null : metricVal(selD, i),
+      ),
+      color: '#333',
+      dashed: selectedYear === curYear,
+      label: `${selectedYear}${selectedYear === curYear ? ' (parcial)' : ''}`,
+    });
+  }
+
+  // Comparison series
+  if (compMode === 'prevYear') {
+    const py = selectedYear - 1;
+    const pyD = yearData[py];
+    if (pyD) {
+      const cidx = allYears.filter(y => y < selectedYear).indexOf(py);
+      lines.push({
+        key: String(py),
+        vals: Array.from({ length: 12 }, (_, i) => metricVal(pyD, i)),
+        color: YEAR_COLORS[cidx % YEAR_COLORS.length] ?? '#888',
+        dashed: false,
+        label: String(py),
+      });
+    }
+  } else {
+    if (prevYears.length > 0) {
+      const avgVals = Array.from({ length: 12 }, (_, i) => {
+        const sum = prevYears.reduce((s, y) => {
+          const d = yearData[y]; return d ? s + metricVal(d, i) : s;
+        }, 0);
+        return sum / prevYears.length;
+      });
+      lines.push({
+        key: 'avg',
+        vals: avgVals,
+        color: '#a09e99',
+        dashed: true,
+        label: `Media ${prevYears.join('/')}`,
+      });
+    }
+  }
+
+  const allVals = lines.flatMap(l => l.vals.filter((v): v is number => v !== null));
+  const minVal  = Math.min(...allVals, 0);
+  const maxVal  = Math.max(...allVals, 1);
+  const yS      = makeYScale(minVal, maxVal, cH, PT);
+  const ticks   = yTicks(minVal, maxVal);
+
+  function buildPath(vals: (number | null)[]): string {
+    let d = '';
+    vals.forEach((v, i) => {
+      if (v === null) return;
+      const x = PL + i * groupW + groupW / 2;
+      const y = yS(v);
+      d += d === '' ? `M${x},${y}` : ` L${x},${y}`;
+    });
+    return d;
+  }
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: H }}>
+      {ticks.map(t => {
+        const y = yS(t); if (y < PT - 6 || y > PT + cH + 6) return null;
+        return (
+          <g key={t}>
+            <line x1={PL} x2={W - PR} y1={y} y2={y}
+              stroke={t === 0 ? '#c8c4bc' : '#f0eee9'} strokeWidth={t === 0 ? 1 : 0.8} />
+            <text x={PL - 5} y={y + 3} textAnchor="end" fontSize={9} fill="#a09e99">{fmtK(t)}</text>
+          </g>
+        );
+      })}
+
+      {MESES.map((m, i) => (
+        <text key={m} x={PL + i * groupW + groupW / 2} y={H - 9}
+          textAnchor="middle" fontSize={9} fill="#a09e99">{m}</text>
+      ))}
+
+      {lines.map(line => {
+        const pathD = buildPath(line.vals);
+        if (!pathD) return null;
+        return (
+          <g key={line.key}>
+            <path d={pathD} fill="none" stroke={line.color} strokeWidth={2}
+              strokeDasharray={line.dashed ? '5,3' : undefined}
+              strokeLinejoin="round" strokeLinecap="round" />
+            {line.vals.map((v, i) => v !== null && (
+              <circle key={i} cx={PL + i * groupW + groupW / 2} cy={yS(v)} r={2.5} fill={line.color} />
+            ))}
+          </g>
+        );
+      })}
+
+      {/* Inline labels at end of line */}
+      {lines.map(line => {
+        const lastIdx = [...line.vals].map((v, i) => v !== null ? i : -1).filter(i => i >= 0).at(-1);
+        if (lastIdx === undefined) return null;
+        const v = line.vals[lastIdx];
+        if (v === null) return null;
+        return (
+          <text key={`lbl-${line.key}`}
+            x={PL + lastIdx * groupW + groupW / 2 + 6}
+            y={yS(v) + 4}
+            fontSize={9} fill={line.color}>
+            {fmtK(v)}
+          </text>
         );
       })}
     </svg>
   );
 }
 
-// ── SVG: monthly bars (selected year + prev year outline) ────────────────────
+// ── Gráfica 3: barras horizontales de gastos ──────────────────────────────────
 
-function BarChartMensual({ ing, gas, ingPrev, gasPrev }: {
-  ing: number[]; gas: number[]; ingPrev: number[]; gasPrev: number[];
-}) {
-  const H = 180, PL = 52, PB = 26, PT = 12, PR = 12;
-  const W = 600;
-  const cW = W - PL - PR, cH = H - PB - PT;
-  const maxVal = Math.max(...ing, ...gas, ...ingPrev, ...gasPrev, 1);
-  const groupW = cW / 12;
-  const barW = Math.min((groupW - 10) / 2, 18);
-  const fmtK = (v: number) => v === 0 ? '0' : v >= 1000 ? Math.round(v / 1000) + 'k' : Math.round(v).toString();
+function ChartCategorias({ catRows }: { catRows: [string, number][] }) {
+  const ROW_H = 30, PL = 162, PR = 90, BAR_H = 14;
+  const W = 700;
+  const H = catRows.length * ROW_H + 8;
+  const cW = W - PL - PR;
+  const maxVal = Math.max(...catRows.map(r => r[1]), 1);
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: H }}>
-      {[0, 0.5, 1].map(t => {
-        const y = PT + cH - t * cH;
+      {catRows.map(([k, v], i) => {
+        const col  = catColor(k, [...CATEGORIAS_GASTO]);
+        const barW = (v / maxVal) * cW;
+        const cy   = i * ROW_H + ROW_H / 2 + 4;
         return (
-          <g key={t}>
-            <line x1={PL} x2={W - PR} y1={y} y2={y} stroke={t === 0 ? '#d0cec8' : '#f0eee9'} strokeWidth={1} />
-            <text x={PL - 5} y={y + 3} textAnchor="end" fontSize={9} fill="#a09e99">{fmtK(t * maxVal)}</text>
-          </g>
-        );
-      })}
-      {MESES.map((m, i) => {
-        const cx = PL + i * groupW + groupW / 2;
-        const bx = cx - barW - 1.5;
-        const iH  = (ing[i]     / maxVal) * cH;
-        const gH  = (gas[i]     / maxVal) * cH;
-        const ipH = (ingPrev[i] / maxVal) * cH;
-        const gpH = (gasPrev[i] / maxVal) * cH;
-        return (
-          <g key={m}>
-            {ipH > 0 && <rect x={bx - 1}          y={PT + cH - ipH} width={barW + 2} height={ipH} fill="none" stroke="#b0b0b0" strokeWidth={1} rx={2} opacity={0.45} />}
-            {gpH > 0 && <rect x={bx + barW + 2}   y={PT + cH - gpH} width={barW + 2} height={gpH} fill="none" stroke="#d0b86a" strokeWidth={1} rx={2} opacity={0.45} />}
-            {iH  > 0 && <rect x={bx}              y={PT + cH - iH}  width={barW}     height={iH}  fill="#333"    rx={2} />}
-            {gH  > 0 && <rect x={bx + barW + 3}   y={PT + cH - gH}  width={barW}     height={gH}  fill="#c8a844" rx={2} />}
-            <text x={cx} y={H - 8} textAnchor="middle" fontSize={9} fill="#a09e99">{m}</text>
+          <g key={k}>
+            <text x={PL - 8} y={cy} textAnchor="end" fontSize={11} fill="#6b6a66">{k}</text>
+            <rect x={PL} y={cy - BAR_H / 2 - 2} width={Math.max(barW, 1)} height={BAR_H} fill={col} rx={2} />
+            <text x={PL + barW + 6} y={cy} fontSize={11} fill="#6b6a66"
+              style={{ fontVariantNumeric: 'tabular-nums' }}>
+              {fmt(v)}
+            </text>
           </g>
         );
       })}
@@ -114,92 +309,82 @@ function BarChartMensual({ ing, gas, ingPrev, gasPrev }: {
 
 export default function ResultadosTab({ facturas, gastos }: Props) {
   const curYear  = new Date().getFullYear();
-  const curMonth = new Date().getMonth(); // 0-indexed
+  const curMonth = new Date().getMonth();
 
   const rawYears = new Set<number>([curYear]);
   facturas.forEach(f => { const y = yearOf(f.fecha); if (y >= 2024) rawYears.add(y); });
   gastos.forEach(g => { const y = yearOf(g.fecha); if (y >= 2024) rawYears.add(y); });
   const years = [...rawYears].sort((a, b) => a - b);
 
-  const [year, setYear] = useState(curYear);
+  const [year, setYear]         = useState(curYear);
+  const [metric, setMetric]     = useState<Metric>('ing');
+  const [compMode, setCompMode] = useState<CompMode>('prevYear');
 
   const isPartial = year === curYear;
   const ytdMax    = isPartial ? curMonth : undefined;
+  const periodLbl = isPartial ? ` (ene–${MESES[curMonth]})` : '';
 
-  const { ing: ingCur, gas: gasCur } = ingasYear(facturas, gastos, year,     ytdMax);
-  const { ing: ingPv,  gas: gasPv  } = ingasYear(facturas, gastos, year - 1, ytdMax);
-  const netCur = ingCur - gasCur;
-  const netPv  = ingPv  - gasPv;
+  // KPI totals
+  const { ing: ingCur, gas: gasCur } = ingasYtd(facturas, gastos, year,     ytdMax);
+  const { ing: ingPv,  gas: gasPv  } = ingasYtd(facturas, gastos, year - 1, ytdMax);
+  const netCur = ingCur - gasCur, netPv = ingPv - gasPv;
 
-  // Facturas/gastos of selected year for breakdown (filtered same as ingCur)
-  const fY = facturas.filter(f => yearOf(f.fecha) === year && (ytdMax === undefined || monthOf(f.fecha) <= ytdMax));
-  const gY = gastos.filter(g => yearOf(g.fecha) === year && (ytdMax === undefined || monthOf(g.fecha) <= ytdMax));
+  // Monthly data
+  const { ing: ingM, gas: gasM } = monthlyArrays(facturas, gastos, year);
 
-  const cobrado = fY.filter(f => f.estado === 'cobrada').reduce((s, f) => s + recTotal(f), 0);
-  const pend    = fY.filter(f => f.estado !== 'cobrada').reduce((s, f) => s + recTotal(f), 0);
-
+  // Category breakdown
+  const gY = gastos.filter(g =>
+    yearOf(g.fecha) === year && (ytdMax === undefined || monthOf(g.fecha) <= ytdMax),
+  );
   const catMap: Record<string, number> = {};
   gY.forEach(g => { const k = g.categoria || 'Sin categoría'; catMap[k] = (catMap[k] ?? 0) + recBase(g); });
-  const orden   = CATEGORIAS_GASTO.map(c => c.label);
-  const catRows = Object.entries(catMap).sort((a, b) => (orden.indexOf(a[0]) + 1 || 99) - (orden.indexOf(b[0]) + 1 || 99));
+  const catRows = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
 
-  // Monthly arrays for Bloque 3
-  const ingM  = Array(12).fill(0), gasM  = Array(12).fill(0);
-  const ingMP = Array(12).fill(0), gasMP = Array(12).fill(0);
-  facturas.filter(f => yearOf(f.fecha) === year).forEach(f => (ingM[monthOf(f.fecha)] += recBase(f)));
-  gastos.filter(g => yearOf(g.fecha) === year).forEach(g => (gasM[monthOf(g.fecha)] += recBase(g)));
-  facturas.filter(f => yearOf(f.fecha) === year - 1).forEach(f => (ingMP[monthOf(f.fecha)] += recBase(f)));
-  gastos.filter(g => yearOf(g.fecha) === year - 1).forEach(g => (gasMP[monthOf(g.fecha)] += recBase(g)));
-
-  // Annual evolution for Bloque 2
-  const anualData = years.map(y => {
-    const partial = y === curYear;
-    const { ing, gas } = ingasYear(facturas, gastos, y, partial ? curMonth : undefined);
-    return { year: y, ing, gas, partial };
-  });
+  // Year data for Gráfica 2
+  const yearData: Record<number, { ing: number[]; gas: number[] }> = {};
+  years.forEach(y => { yearData[y] = monthlyArrays(facturas, gastos, y); });
 
   // ── styles ──
-  const panel: React.CSSProperties = { background: '#fff', border: '1px solid #e0ddd5', borderRadius: 6, padding: 16, marginBottom: 14 };
-  const pt: React.CSSProperties = { fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: '#a09e99', marginBottom: 12, fontWeight: 500 };
-  const divRow = (sub = false): React.CSSProperties => ({
-    display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-    padding: sub ? '3px 0 3px 14px' : '5px 0', fontSize: sub ? 11 : 12,
-    color: sub ? '#a09e99' : '#6b6a66',
-    borderBottom: sub ? 'none' : '1px solid #f0eee9',
-  });
-  const legend = (color: string, outlined = false): React.CSSProperties => ({
-    width: 10, height: 10, borderRadius: 2,
-    background: outlined ? 'none' : color,
-    border: outlined ? `1px solid ${color}` : 'none',
+  const panel: React.CSSProperties = {
+    background: '#fff', border: '1px solid #e0ddd5', borderRadius: 6, padding: 16, marginBottom: 14,
+  };
+  const pt: React.CSSProperties = {
+    fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase',
+    color: '#a09e99', fontWeight: 500,
+  };
+  const tBtn = (active: boolean): React.CSSProperties => ({
+    height: 26, padding: '0 11px', borderRadius: 5, fontSize: 11, fontFamily: 'inherit',
+    cursor: 'pointer', border: '1px solid',
+    background: active ? '#333' : '#fff', color: active ? '#fff' : '#6b6a66',
+    borderColor: active ? '#333' : '#c8c4bc',
   });
 
-  const periodLabel = isPartial ? ` (ene–${MESES[curMonth]})` : '';
+  // KPI definitions
+  type KpiDef = { label: string; val: number; prev: number; color: string };
+  const kpis: KpiDef[] = [
+    { label: 'Ingresos',       val: ingCur, prev: ingPv, color: '#333' },
+    { label: 'Gastos',         val: gasCur, prev: gasPv, color: '#c0392b' },
+    { label: 'Resultado neto', val: netCur, prev: netPv, color: netCur >= 0 ? '#2e7d46' : '#c0392b' },
+  ];
 
   return (
     <div>
       {/* Year selector */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-        <select
-          value={year}
-          onChange={e => setYear(+e.target.value)}
-          style={{ height: 30, padding: '0 9px', border: '1px solid #c8c4bc', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none', background: '#fff', color: '#333' }}
-        >
+        <select value={year} onChange={e => setYear(+e.target.value)}
+          style={{ height: 30, padding: '0 9px', border: '1px solid #c8c4bc', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none', background: '#fff', color: '#333' }}>
           {years.map(y => <option key={y} value={y}>{y}{y === curYear ? ' (parcial)' : ''}</option>)}
         </select>
         {isPartial && (
           <span style={{ fontSize: 11, color: '#a09e99' }}>
-            Datos hasta {MESES[curMonth]} {year} — comparativa YTD con mismo periodo {year - 1}
+            Datos hasta {MESES[curMonth]} {year} — comparativa YTD vs mismo periodo {year - 1}
           </span>
         )}
       </div>
 
-      {/* ── Bloque 1a: KPIs ── */}
+      {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
-        {([
-          { label: 'Ingresos',      val: ingCur, prev: ingPv,  color: '#333' as string },
-          { label: 'Gastos',        val: gasCur, prev: gasPv,  color: '#c0392b' as string },
-          { label: 'Resultado neto',val: netCur, prev: netPv,  color: (netCur >= 0 ? '#2e7d46' : '#c0392b') as string },
-        ] as { label: string; val: number; prev: number; color: string }[]).map(({ label, val, prev, color }) => {
+        {kpis.map(({ label, val, prev, color }) => {
           const diff = val - prev;
           const pct  = prev ? Math.round(diff / Math.abs(prev) * 100) : null;
           const sign = diff >= 0 ? '+' : '';
@@ -218,81 +403,99 @@ export default function ResultadosTab({ facturas, gastos }: Props) {
         })}
       </div>
 
-      {/* ── Bloque 1b: Cuenta de resultados ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-        <div style={panel}>
-          <div style={pt}>Ingresos {year}{periodLabel}</div>
-          <div style={{ ...divRow(), fontWeight: 600 }}>
-            <span>Total facturado (s/IVA)</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(ingCur)}</span>
-          </div>
-          <div style={divRow(true)}>
-            <span>Cobrado (con IVA)</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(cobrado)}</span>
-          </div>
-          <div style={divRow(true)}>
-            <span>Pendiente (con IVA)</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(pend)}</span>
-          </div>
-          <div style={{ ...divRow(), fontWeight: 700, fontSize: 14, borderTop: '2px solid #333', borderBottom: 'none', marginTop: 8, paddingTop: 8 }}>
-            <span>Resultado neto</span>
-            <span style={{ color: netCur >= 0 ? '#2e7d46' : '#c0392b', fontVariantNumeric: 'tabular-nums' }}>
-              {(netCur >= 0 ? '+' : '') + fmt(netCur)}
-            </span>
+      {/* ── Gráfica 1: Mensual ── */}
+      <div style={panel}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+          <span style={pt}>Mensual {year}{periodLbl}</span>
+          <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+            {([['#333','Ingresos'],['#c8a844','Gastos']] as [string,string][]).map(([c, l]) => (
+              <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#6b6a66' }}>
+                <div style={{ width: 10, height: 10, borderRadius: 2, background: c }} />{l}
+              </div>
+            ))}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#2e7d46' }}>
+              <svg width={22} height={10} style={{ verticalAlign: 'middle' }}>
+                <line x1={0} y1={5} x2={22} y2={5} stroke="#2e7d46" strokeWidth={2} />
+                <circle cx={11} cy={5} r={3} fill="#2e7d46" />
+              </svg>
+              Resultado neto
+            </div>
           </div>
         </div>
-        <div style={panel}>
-          <div style={pt}>Gastos por categoría {year}{periodLabel}</div>
-          <div style={{ ...divRow(), fontWeight: 600 }}>
-            <span>Total gastos (s/IVA)</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(gasCur)}</span>
+        <ChartMensual ing={ingM} gas={gasM} partial={isPartial} curMonth={curMonth} />
+      </div>
+
+      {/* ── Gráfica 2: Comparativa por años ── */}
+      <div style={panel}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+          <span style={pt}>Comparativa entre años</span>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            {/* Metric toggle */}
+            <div style={{ display: 'flex', gap: 3 }}>
+              {([['ing','Ingresos'],['gas','Gastos'],['net','Beneficio neto']] as [Metric,string][]).map(([m, l]) => (
+                <button key={m} style={tBtn(metric === m)} onClick={() => setMetric(m)}>{l}</button>
+              ))}
+            </div>
+            <div style={{ width: 1, height: 20, background: '#e0ddd5' }} />
+            {/* Comparison mode */}
+            <div style={{ display: 'flex', gap: 3 }}>
+              <button style={tBtn(compMode === 'prevYear')} onClick={() => setCompMode('prevYear')}>Año anterior</button>
+              <button style={tBtn(compMode === 'avgPrev')} onClick={() => setCompMode('avgPrev')}>Media años ant.</button>
+            </div>
           </div>
-          {catRows.map(([k, v]) => {
-            const col = catColor(k, [...CATEGORIAS_GASTO]);
+        </div>
+        <ChartLineas
+          yearData={yearData}
+          allYears={years}
+          selectedYear={year}
+          metric={metric}
+          compMode={compMode}
+          curYear={curYear}
+          curMonth={curMonth}
+        />
+        {/* Legend */}
+        <div style={{ display: 'flex', gap: 14, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Selected year */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#333' }}>
+            <svg width={22} height={10} style={{ verticalAlign: 'middle' }}>
+              <line x1={0} y1={5} x2={22} y2={5} stroke="#333" strokeWidth={2}
+                strokeDasharray={isPartial ? '5,3' : undefined} />
+            </svg>
+            {year}{isPartial ? ' (parcial)' : ''}
+          </div>
+          {/* Comparison series */}
+          {compMode === 'prevYear' && yearData[year - 1] && (() => {
+            const cidx = years.filter(y => y < year).indexOf(year - 1);
+            const col  = YEAR_COLORS[cidx % YEAR_COLORS.length] ?? '#888';
             return (
-              <div key={k} style={divRow(true)}>
-                <span>
-                  <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: col, marginRight: 6, verticalAlign: 'middle' }} />
-                  {k}
-                </span>
-                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(v)}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: col }}>
+                <svg width={22} height={10} style={{ verticalAlign: 'middle' }}>
+                  <line x1={0} y1={5} x2={22} y2={5} stroke={col} strokeWidth={2} />
+                </svg>
+                {year - 1}
               </div>
             );
-          })}
-          {catRows.length === 0 && <div style={{ fontSize: 11, color: '#a09e99', padding: '8px 0' }}>Sin gastos registrados.</div>}
+          })()}
+          {compMode === 'avgPrev' && years.filter(y => y < year).length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#a09e99' }}>
+              <svg width={22} height={10} style={{ verticalAlign: 'middle' }}>
+                <line x1={0} y1={5} x2={22} y2={5} stroke="#a09e99" strokeWidth={2} strokeDasharray="5,3" />
+              </svg>
+              Media {years.filter(y => y < year).join('/')}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* ── Bloque 2: Evolución plurianual ── */}
+      {/* ── Gráfica 3: Categorías ── */}
       <div style={panel}>
-        <div style={pt}>Evolución plurianual — ingresos vs gastos (desde 2024)</div>
-        <BarChartAnual data={anualData} />
-        <div style={{ display: 'flex', gap: 14, marginTop: 8, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
-          {([['#333','Ingresos'],['#c8a844','Gastos']] as [string,string][]).map(([c, l]) => (
-            <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#6b6a66' }}>
-              <div style={legend(c)} />{l}
-            </div>
-          ))}
-          <div style={{ fontSize: 10, color: '#a09e99', marginLeft: 4 }}>* año parcial (YTD)</div>
+        <div style={{ ...pt, marginBottom: catRows.length > 0 ? 14 : 8 }}>
+          Gastos por categoría {year}{periodLbl}
         </div>
-      </div>
-
-      {/* ── Bloque 3: Desglose mensual ── */}
-      <div style={panel}>
-        <div style={pt}>Desglose mensual {year} vs {year - 1}</div>
-        <BarChartMensual ing={ingM} gas={gasM} ingPrev={ingMP} gasPrev={gasMP} />
-        <div style={{ display: 'flex', gap: 14, marginTop: 8, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
-          {([['#333',`Ingresos ${year}`],['#c8a844',`Gastos ${year}`]] as [string,string][]).map(([c, l]) => (
-            <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#6b6a66' }}>
-              <div style={legend(c)} />{l}
-            </div>
-          ))}
-          {([['#b0b0b0',`Ingresos ${year - 1}`],['#d0b86a',`Gastos ${year - 1}`]] as [string,string][]).map(([c, l]) => (
-            <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#a09e99' }}>
-              <div style={legend(c, true)} />{l}
-            </div>
-          ))}
-        </div>
+        {catRows.length === 0
+          ? <div style={{ fontSize: 12, color: '#a09e99', padding: '8px 0' }}>Sin gastos registrados.</div>
+          : <ChartCategorias catRows={catRows} />
+        }
       </div>
     </div>
   );
