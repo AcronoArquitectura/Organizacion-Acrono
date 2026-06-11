@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { Presupuesto, Cliente, PemRow, Partida } from '@/lib/types';
 import {
   FL_OPTS, FT_VIV, FC_VIV, USOS_OTROS, USOS_URB, OBSERVACIONES_SEED,
@@ -44,6 +44,8 @@ export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave
   const router = useRouter();
   const [showSugg, setShowSugg] = useState(false);
   const suppressing = useRef(false);
+  const [dragPartidaIdx, setDragPartidaIdx] = useState<number | null>(null);
+  const [overPartidaIdx, setOverPartidaIdx] = useState<number | null>(null);
 
   function upd(patch: Partial<Presupuesto>) { setP(prev => ({ ...prev, ...patch })); }
 
@@ -108,6 +110,14 @@ export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave
 
   function delPartida(i: number) {
     upd({ partidas: p.partidas.filter((_, idx) => idx !== i) });
+  }
+
+  function movePartida(from: number, to: number) {
+    if (from === to) return;
+    const parts = [...p.partidas];
+    const [item] = parts.splice(from, 1);
+    parts.splice(to, 0, item);
+    upd({ partidas: parts });
   }
 
   function addFase(name: string) {
@@ -549,8 +559,8 @@ export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #e0ddd5' }}>
-                  {['Fase','Concepto','Tipo','Importe','Meses',''].map((h, i) => (
-                    <th key={i} style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.05em', color: '#a09e99', fontWeight: 500, padding: '4px 6px', textAlign: h === 'Importe' ? 'right' : 'left', width: h === 'Fase' ? 110 : h === 'Tipo' ? 90 : h === 'Importe' ? 92 : h === 'Meses' ? 64 : h === '' ? 26 : undefined }}>{h}</th>
+                  {(['', 'Fase', 'Concepto', 'Tipo', 'Importe', 'Meses', ''] as const).map((h, i) => (
+                    <th key={i} style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.05em', color: '#a09e99', fontWeight: 500, padding: '4px 6px', textAlign: h === 'Importe' ? 'right' : 'left', width: i === 0 ? 20 : h === 'Fase' ? 110 : h === 'Tipo' ? 90 : h === 'Importe' ? 92 : h === 'Meses' ? 64 : i === 6 ? 26 : undefined }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -558,8 +568,24 @@ export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave
                 {p.partidas.map((r, i) => {
                   const tipo = r.tipo || 'fijo';
                   const hasVal = tipo === 'fijo' || tipo === 'mensual';
+                  const isDragging = dragPartidaIdx === i;
+                  const isOver = overPartidaIdx === i && dragPartidaIdx !== i;
                   return (
-                    <tr key={i} style={{ borderBottom: '1px solid #f4f2ed' }}>
+                    <tr key={i}
+                      draggable
+                      onDragStart={e => {
+                        const tag = (e.target as HTMLElement).tagName.toLowerCase();
+                        if (['input', 'select', 'button'].includes(tag)) { e.preventDefault(); return; }
+                        setDragPartidaIdx(i);
+                      }}
+                      onDragOver={e => { e.preventDefault(); if (overPartidaIdx !== i) setOverPartidaIdx(i); }}
+                      onDrop={() => { if (dragPartidaIdx !== null) movePartida(dragPartidaIdx, i); setDragPartidaIdx(null); setOverPartidaIdx(null); }}
+                      onDragEnd={() => { setDragPartidaIdx(null); setOverPartidaIdx(null); }}
+                      style={{ borderBottom: '1px solid #f4f2ed', opacity: isDragging ? 0.35 : 1, background: isOver ? '#f5f2ec' : 'transparent', transition: 'background .1s' }}
+                    >
+                      <td style={{ padding: '4px 2px', textAlign: 'center', cursor: 'grab' }}>
+                        <DragHandle />
+                      </td>
                       <td style={{ padding: '4px 6px' }}>
                         <select style={{ ...P.inp, height: 26, fontSize: 11 }} value={r.fase}
                           onChange={e => setPartida(i, { fase: e.target.value })}>
@@ -670,7 +696,7 @@ export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave
           </div>
 
           {/* Panel 8: Observaciones */}
-          <ObservacionesPanel p={p} onToggle={toggleObs} onAdd={addCustomObs} onUpd={upd} />
+          <ObservacionesPanel key={p.id} p={p} onToggle={toggleObs} onAdd={addCustomObs} onUpd={upd} />
 
         </div>
 
@@ -693,6 +719,19 @@ export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave
 }
 
 // ── Sub-componentes ───────────────────────────────────────────────────────────
+
+function DragHandle() {
+  return (
+    <svg width={10} height={14} viewBox="0 0 10 14" style={{ display: 'block', margin: '0 auto' }}>
+      <circle cx="3" cy="3"  r="1.5" fill="#c8c4bc" />
+      <circle cx="7" cy="3"  r="1.5" fill="#c8c4bc" />
+      <circle cx="3" cy="7"  r="1.5" fill="#c8c4bc" />
+      <circle cx="7" cy="7"  r="1.5" fill="#c8c4bc" />
+      <circle cx="3" cy="11" r="1.5" fill="#c8c4bc" />
+      <circle cx="7" cy="11" r="1.5" fill="#c8c4bc" />
+    </svg>
+  );
+}
 
 function FasesChips({ fases, onAdd, onDel }: { fases: string[]; onAdd: (s: string) => void; onDel: (s: string) => void }) {
   const [input, setInput] = useState('');
@@ -717,6 +756,27 @@ function FasesChips({ fases, onAdd, onDel }: { fases: string[]; onAdd: (s: strin
   );
 }
 
+function buildObsGroupOrders(
+  items: Array<{ id: string; grupo?: string }>,
+  sel: string[],
+): Record<string, string[]> {
+  const byGroup: Record<string, string[]> = {};
+  items.forEach(o => {
+    const g = o.grupo ?? 'Otros';
+    if (!byGroup[g]) byGroup[g] = [];
+    byGroup[g].push(o.id);
+  });
+  // Checked items first (in sel order), then unchecked in their original order
+  Object.keys(byGroup).forEach(g => {
+    const checked = sel.filter(id => byGroup[g].includes(id));
+    const unchecked = byGroup[g].filter(id => !sel.includes(id));
+    byGroup[g] = [...checked, ...unchecked];
+  });
+  return byGroup;
+}
+
+const OBS_GRUPOS = ['Incluye', 'No incluye', 'Otros'] as const;
+
 function ObservacionesPanel({ p, onToggle, onAdd, onUpd }: {
   p: Presupuesto;
   onToggle: (id: string, on: boolean) => void;
@@ -725,27 +785,86 @@ function ObservacionesPanel({ p, onToggle, onAdd, onUpd }: {
 }) {
   const [newTxt, setNewTxt] = useState('');
   const [newGrupo, setNewGrupo] = useState('Incluye');
-  const all = [...OBSERVACIONES_SEED, ...(p.observacionesCustom ?? [])];
   const inpSt: React.CSSProperties = { height: 30, padding: '0 8px', border: '1px solid #c8c4bc', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none', background: '#fff', color: '#333', width: '100%' };
+
+  const all = [...OBSERVACIONES_SEED, ...(p.observacionesCustom ?? [])];
+  const [groupOrders, setGroupOrders] = useState(() => buildObsGroupOrders(all, p.observacionesSel));
+  const [dragObs, setDragObs] = useState<{ g: string; i: number } | null>(null);
+  const [overObs, setOverObs] = useState<{ g: string; i: number } | null>(null);
+
+  // Sync new custom observations into groupOrders when they're added
+  useEffect(() => {
+    setGroupOrders(prev => {
+      const currentIds = new Set(Object.values(prev).flat());
+      const newItems = all.filter(o => !currentIds.has(o.id));
+      if (!newItems.length) return prev;
+      const next = { ...prev };
+      newItems.forEach(o => {
+        const g = o.grupo ?? 'Otros';
+        next[g] = [...(next[g] ?? []), o.id];
+      });
+      return next;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.observacionesCustom]);
+
+  const obsById = new Map(all.map(o => [o.id, o]));
+
+  function moveObs(grupo: string, from: number, to: number) {
+    if (from === to) return;
+    const next = { ...groupOrders };
+    const ids = [...(next[grupo] ?? [])];
+    const [item] = ids.splice(from, 1);
+    ids.splice(to, 0, item);
+    next[grupo] = ids;
+    setGroupOrders(next);
+    // Persist the new intra-group order of checked items via observacionesSel
+    const newSel = OBS_GRUPOS.flatMap(g => (next[g] ?? []).filter(id => p.observacionesSel.includes(id)));
+    onUpd({ observacionesSel: newSel });
+  }
 
   return (
     <div style={{ background: '#fff', border: '1px solid #e0ddd5', borderRadius: 6, padding: '15px 16px', marginBottom: 14 }}>
       <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#a09e99', marginBottom: 12, fontWeight: 500 }}>
         Observaciones del PDF (solo aparecen las marcadas)
       </div>
-      {(['Incluye', 'No incluye', 'Otros'] as const).map(g => {
-        const items = all.filter(o => (o as {grupo?: string}).grupo === g);
+      {OBS_GRUPOS.map(g => {
+        const ids = groupOrders[g] ?? [];
+        const items = ids.map(id => obsById.get(id)).filter((o): o is typeof all[number] => !!o);
         if (!items.length) return null;
         return (
           <div key={g} style={{ marginBottom: 8 }}>
             <div style={{ fontSize: 11, fontWeight: 600, margin: '6px 0 2px', color: '#6b6a66' }}>{g}</div>
-            {items.map(o => (
-              <div key={o.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 0', borderBottom: '1px solid #f4f2ed', fontSize: 12 }}>
-                <input type="checkbox" checked={p.observacionesSel.includes(o.id)} onChange={e => onToggle(o.id, e.target.checked)}
-                  style={{ marginTop: 3, accentColor: '#b07a1e', width: 'auto', height: 'auto' }} />
-                <div style={{ flex: 1 }}>{(o as {txt?: string}).txt}</div>
-              </div>
-            ))}
+            {items.map((o, idx) => {
+              const isDragging = dragObs?.g === g && dragObs.i === idx;
+              const isOver = overObs?.g === g && overObs.i === idx && dragObs?.g === g && dragObs.i !== idx;
+              return (
+                <div
+                  key={o.id}
+                  draggable
+                  onDragStart={e => {
+                    const tag = (e.target as HTMLElement).tagName.toLowerCase();
+                    if (['input', 'button'].includes(tag)) { e.preventDefault(); return; }
+                    setDragObs({ g, i: idx });
+                  }}
+                  onDragOver={e => { e.preventDefault(); setOverObs({ g, i: idx }); }}
+                  onDrop={() => { if (dragObs?.g === g) moveObs(g, dragObs.i, idx); setDragObs(null); setOverObs(null); }}
+                  onDragEnd={() => { setDragObs(null); setOverObs(null); }}
+                  style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 8,
+                    padding: '6px 0', borderBottom: '1px solid #f4f2ed', fontSize: 12,
+                    opacity: isDragging ? 0.35 : 1,
+                    background: isOver ? '#f5f2ec' : 'transparent',
+                    transition: 'background .1s',
+                  }}
+                >
+                  <span style={{ flexShrink: 0, marginTop: 3, cursor: 'grab' }}><DragHandle /></span>
+                  <input type="checkbox" checked={p.observacionesSel.includes(o.id)} onChange={e => onToggle(o.id, e.target.checked)}
+                    style={{ marginTop: 3, accentColor: '#b07a1e', width: 'auto', height: 'auto', flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>{(o as { txt?: string }).txt}</div>
+                </div>
+              );
+            })}
           </div>
         );
       })}

@@ -182,7 +182,9 @@ function buildHTML(p: Presupuesto, base: string): string {
 
   // Observations
   const allObs = [...OBSERVACIONES_SEED, ...(p.observacionesCustom ?? [])];
-  const obs = allObs.filter(o => p.observacionesSel.includes(o.id));
+  const obsById = new Map(allObs.map(o => [o.id, o]));
+  // Use observacionesSel order (user-defined via drag-and-drop)
+  const obs = p.observacionesSel.map(id => obsById.get(id)).filter(Boolean) as typeof allObs;
   const obsGrupo = (g: string) => {
     const items = obs.filter(o => (o as {grupo?: string}).grupo === g);
     if (!items.length) return '';
