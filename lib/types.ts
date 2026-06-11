@@ -161,7 +161,7 @@ export interface Extra {
 export interface Partida {
   fase: string;
   concepto: string;
-  tipo: 'fijo' | 'mensual' | 'incluido' | 'noincluido';
+  tipo: 'fijo' | 'mensual' | 'incluido' | 'noincluido' | 'porhoras' | 'opcional';
   importe: number;
   meses?: number;
 }

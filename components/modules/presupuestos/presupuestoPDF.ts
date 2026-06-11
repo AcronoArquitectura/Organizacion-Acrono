@@ -177,8 +177,19 @@ function buildHTML(p: Presupuesto, base: string): string {
   partidas.forEach(x => { if (!allFases.includes(x.fase)) allFases.push(x.fase); });
   allFases.sort((a, b) => phaseNum(a) - phaseNum(b));
 
-  const partRow = (x: typeof partidas[0]) =>
-    `<tr><td>${esc(x.concepto)}</td><td class="r">${x.tipo === 'incluido' ? 'Incluido' : x.tipo === 'noincluido' ? 'NO INCLUIDO' : x.tipo === 'mensual' ? fmt0(x.importe ?? 0) + '/mes' : fmt0(x.importe ?? 0)}</td></tr>`;
+  const partRow = (x: typeof partidas[0]): string => {
+    if (x.tipo === 'opcional') {
+      const box = `<span style="display:inline-block;border:1.5px solid #555;width:12px;height:12px;vertical-align:middle;margin:0 5px"></span>`;
+      return `<tr style="background:#fafaf8"><td>${esc(x.concepto)}</td><td style="text-align:right;vertical-align:middle"><span style="font-size:9px;font-style:italic;color:#888;font-weight:400">Opcional · no incluido en total${box}</span><span style="font-weight:600;white-space:nowrap">${fmt0(+(x.importe ?? 0))}</span></td></tr>`;
+    }
+    let val: string;
+    if      (x.tipo === 'incluido')   val = 'Incluido';
+    else if (x.tipo === 'noincluido') val = 'NO INCLUIDO';
+    else if (x.tipo === 'mensual')    val = fmt0(x.importe ?? 0) + '/mes';
+    else if (x.tipo === 'porhoras')   val = Math.round(+(x.importe ?? 0)).toLocaleString('es-ES') + ' €/h';
+    else                               val = fmt0(x.importe ?? 0);
+    return `<tr><td>${esc(x.concepto)}</td><td class="r">${val}</td></tr>`;
+  };
 
   // Observations
   const allObs = [...OBSERVACIONES_SEED, ...(p.observacionesCustom ?? [])];

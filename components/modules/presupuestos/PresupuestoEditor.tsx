@@ -567,7 +567,7 @@ export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave
               <tbody>
                 {p.partidas.map((r, i) => {
                   const tipo = r.tipo || 'fijo';
-                  const hasVal = tipo === 'fijo' || tipo === 'mensual';
+                  const hasVal = tipo === 'fijo' || tipo === 'mensual' || tipo === 'porhoras' || tipo === 'opcional';
                   const isDragging = dragPartidaIdx === i;
                   const isOver = overPartidaIdx === i && dragPartidaIdx !== i;
                   return (
@@ -601,6 +601,8 @@ export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave
                           onChange={e => setPartida(i, { tipo: e.target.value as Partida['tipo'] })}>
                           <option value="fijo">€ fijo</option>
                           <option value="mensual">€/mes</option>
+                          <option value="porhoras">€/h</option>
+                          <option value="opcional">Opcional</option>
                           <option value="incluido">Incluido</option>
                           <option value="noincluido">NO INC.</option>
                         </select>
