@@ -179,8 +179,20 @@ function buildHTML(p: Presupuesto, base: string): string {
 
   const partRow = (x: typeof partidas[0]): string => {
     if (x.tipo === 'opcional') {
-      const box = `<span style="display:inline-block;border:1.5px solid #555;width:12px;height:12px;vertical-align:middle;margin:0 5px"></span>`;
-      return `<tr style="background:#fafaf8"><td>${esc(x.concepto)}</td><td style="text-align:right;vertical-align:middle"><span style="font-size:9px;font-style:italic;color:#888;font-weight:400">Opcional · no incluido en total${box}</span><span style="font-weight:600;white-space:nowrap">${fmt0(+(x.importe ?? 0))}</span></td></tr>`;
+      return `<tr style="background:#f5f4f0"><td colspan="2" style="padding:0">` +
+        `<table style="width:100%;border-collapse:collapse"><tr>` +
+          `<td style="padding:7px 8px;vertical-align:middle">${esc(x.concepto)}</td>` +
+          `<td style="padding:5px 10px;width:188px;vertical-align:middle;text-align:center;border-left:1px solid #ddd9d2;border-right:1px solid #ddd9d2">` +
+            `<span style="font-size:10.5px;font-weight:600">Opcional:</span>` +
+            `<span style="font-size:9px;color:#555;display:block;margin-top:1px;line-height:1.3">no incluido en total</span>` +
+            `<span style="font-size:9px;color:#999;display:block;line-height:1.3">[Marcar con X]</span>` +
+          `</td>` +
+          `<td style="padding:5px 10px;width:56px;vertical-align:middle;text-align:center;border-right:1px solid #ddd9d2">` +
+            `<div style="border:2px solid #444;width:34px;height:24px;margin:0 auto"></div>` +
+          `</td>` +
+          `<td style="padding:7px 8px;width:90px;vertical-align:middle;text-align:right;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap">${fmt0(+(x.importe ?? 0))}</td>` +
+        `</tr></table>` +
+      `</td></tr>`;
     }
     let val: string;
     if      (x.tipo === 'incluido')   val = 'Incluido';
