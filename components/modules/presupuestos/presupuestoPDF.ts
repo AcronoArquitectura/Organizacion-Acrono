@@ -152,12 +152,12 @@ function buildHTML(p: Presupuesto, base: string): string {
 
   // Partidas: use existing or calculate default
   const partidas = p.partidas.length > 0 ? p.partidas : calcPartidasDef(p);
-  const mensual = partidas.find(x => x.tipo === 'mensual');
-  const partFijas = partidas.filter(x => x.tipo !== 'mensual');
-  const baseFijo = partFijas.filter(x => typeof x.importe === 'number').reduce((s, x) => s + (x.importe ?? 0), 0);
+  const mensual  = partidas.find(x => x.tipo === 'mensual');
+  // Solo partidas de tipo 'fijo' forman la base imponible; 'incluido' y 'noincluido' no se suman
+  const baseFijo = partidas.filter(x => x.tipo === 'fijo').reduce((s, x) => s + +(x.importe ?? 0), 0);
 
   // Honorarios totales derivados de las partidas — misma fórmula que PresupuestoSummary
-  const honFijo      = partidas.filter(x => x.tipo === 'fijo').reduce((s, x) => s + +(x.importe ?? 0), 0);
+  const honFijo      = baseFijo;
   const honMensual   = partidas.filter(x => x.tipo === 'mensual').reduce((s, x) => s + +(x.importe ?? 0) * +(x.meses ?? 0), 0);
   const honExtrasT   = honorariosExtrasTotal(p);
   const honBaseTotal = honFijo + honMensual + honExtrasT;
