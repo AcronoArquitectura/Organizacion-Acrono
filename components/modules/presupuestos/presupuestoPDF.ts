@@ -148,7 +148,6 @@ function buildHTML(p: Presupuesto, base: string): string {
   const ACRONO_LOGO = `${base}/logotipo_reducido.png`;
   const firmaImg = (key: string) => `${base}${FIRMAS[key] ?? ''}`;
 
-  const ct = costesTotales(p);
   const cl = p.cliente, pr = p.proyecto;
 
   // Partidas: use existing or calculate default
@@ -156,6 +155,23 @@ function buildHTML(p: Presupuesto, base: string): string {
   const mensual = partidas.find(x => x.tipo === 'mensual');
   const partFijas = partidas.filter(x => x.tipo !== 'mensual');
   const baseFijo = partFijas.filter(x => typeof x.importe === 'number').reduce((s, x) => s + (x.importe ?? 0), 0);
+
+  // Honorarios totales derivados de las partidas — misma fórmula que PresupuestoSummary
+  const honFijo      = partidas.filter(x => x.tipo === 'fijo').reduce((s, x) => s + +(x.importe ?? 0), 0);
+  const honMensual   = partidas.filter(x => x.tipo === 'mensual').reduce((s, x) => s + +(x.importe ?? 0) * +(x.meses ?? 0), 0);
+  const honExtrasT   = honorariosExtrasTotal(p);
+  const honBaseTotal = honFijo + honMensual + honExtrasT;
+  const honArqTotal  = honBaseTotal * 1.21;
+  const honMeses     = mensual?.meses ?? (+p.duracionMeses || 0);
+
+  // Estimación de costes: reemplazamos la fila de honorarios con el valor derivado de las partidas
+  const ct = costesTotales(p);
+  const ctFilas = ct.filas.map(f =>
+    (f[0] as string).startsWith('Honorarios arquitectos con IVA')
+      ? [`Honorarios arquitectos con IVA del 21% (con ${honMeses} meses de obra)`, honArqTotal, f[2]] as [string, number, boolean]
+      : f
+  );
+  const ctTotal = ctFilas.reduce((s, f) => s + f[1], 0);
   const phaseNum = (s: string) => { const m = s.match(/\d+/); return m ? +m[0] : 999; };
   const allFases = [...(p.fases?.length ? p.fases : ['FASE 1 · PROYECTO', 'FASE 2 · OBRA'])];
   partidas.forEach(x => { if (!allFases.includes(x.fase)) allFases.push(x.fase); });
@@ -242,8 +258,8 @@ ${obs.length ? `<div class="page">
   ${pemCalcHTML(p)}
   <table class="t">
     <tr class="th"><td>Concepto</td><td class="r">Precio</td></tr>
-    ${ct.filas.map(f => `<tr><td>${esc(f[0] as string)} ${f[2] ? '<span class="est">Estimación</span>' : ''}</td><td class="r">${fmt0(f[1] as number)}</td></tr>`).join('')}
-    <tr class="fase-h"><td>TOTAL</td><td class="r">${fmt0(ct.total)}</td></tr>
+    ${ctFilas.map(f => `<tr><td>${esc(f[0] as string)} ${f[2] ? '<span class="est">Estimación</span>' : ''}</td><td class="r">${fmt0(f[1] as number)}</td></tr>`).join('')}
+    <tr class="fase-h"><td>TOTAL</td><td class="r">${fmt0(ctTotal)}</td></tr>
   </table>
   ${pieHTML()}
 </div>
