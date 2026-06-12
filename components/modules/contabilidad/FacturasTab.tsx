@@ -108,10 +108,12 @@ export default function FacturasTab({ facturas, onUpdate, clientes, presupuestos
 
   function nextFacturaNumero(allFacturas: Factura[]): string {
     const today = new Date();
-    const yy = String(today.getFullYear()).slice(2);
+    const curYear = today.getFullYear();
+    const yy = String(curYear).slice(2);
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const max = allFacturas
       .filter(esFacturaReal)
+      .filter(f => yearOf(f.fecha) === curYear)
       .map(f => parseInt(f.numero.split('-')[1] ?? '0', 10))
       .filter(n => !isNaN(n))
       .reduce((a, b) => Math.max(a, b), 0);
