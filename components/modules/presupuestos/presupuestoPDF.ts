@@ -279,7 +279,7 @@ ${obs.length ? `<div class="page">
 <div class="page">
   <div class="hd"><img src="${ACRONO_LOGO}"></div>
   <h2 class="sec">Estimación de costes totales</h2>
-  <div class="pem-note">El Presupuesto de Ejecución Material se ha calculado mediante los baremos del Colegio Oficial de Arquitectos de Granada.</div>
+  <div class="pem-note">El Presupuesto de Ejecución Material se ha calculado mediante los baremos del Colegio de Arquitectos.</div>
   ${pemCalcHTML(p)}
   <table class="t">
     <tr class="th"><td>Concepto</td><td class="r">Precio</td></tr>
