@@ -1,18 +1,23 @@
 'use client';
 
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTransition } from 'react';
 import type { Cliente, Factura, Presupuesto, Proyecto } from '@/lib/types';
 import { getCurrentPhase, getPhaseProgress } from '@/lib/utils/phases';
-import { honorariosConAjuste } from '@/lib/utils/coag';
-import { upsertPresupuesto } from '@/lib/actions/presupuestos';
+import { honorariosConAjuste, nuevoPresupuestoObj } from '@/lib/utils/coag';
+import { upsertPresupuesto, deletePresupuesto } from '@/lib/actions/presupuestos';
+import { upsertFactura, deleteFactura } from '@/components/modules/contabilidad/actions';
+import PresupuestoEditor from '@/components/modules/presupuestos/PresupuestoEditor';
+import FacturaModal from '@/components/modules/contabilidad/FacturaModal';
 
 interface Props {
   cliente: Cliente;
   orgProyectos: Proyecto[];
   facturas: Factura[];
   presupuestos: Presupuesto[];
+  clientes: Cliente[];
   onPresupuestosChange: (list: Presupuesto[]) => void;
+  onFacturasChange: (list: Factura[]) => void;
   onEdit: () => void;
   onDelete: () => void;
   isPending: boolean;
@@ -35,38 +40,26 @@ const ESTADO_PRESUP: Record<string, { label: string; color: string; bg: string }
   anulado:   { label: 'Anulado',  color: '#a09e99', bg: '#f5f4f0' },
 };
 
-export default function ClientesFicha({ cliente, orgProyectos, facturas, presupuestos, onPresupuestosChange, onEdit, onDelete, isPending }: Props) {
+export default function ClientesFicha({
+  cliente, orgProyectos, facturas, presupuestos, clientes,
+  onPresupuestosChange, onFacturasChange, onEdit, onDelete, isPending,
+}: Props) {
   const router = useRouter();
   const [presupPending, startPresupTransition] = useTransition();
+  const [facturaPending, startFacturaTransition] = useTransition();
 
+  // ── Modal state ────────────────────────────────────────────────────────────
+  const [presupModal, setPresupModal] = useState<{ presup: Presupuesto; isNew: boolean } | null>(null);
+  const [facturaModal, setFacturaModal] = useState<{ factura: Factura | null } | null>(null);
+
+  // ── Presupuesto calculations ────────────────────────────────────────────────
   const todosPresupuestos = cliente.nif
     ? presupuestos.filter(p => p.cliente.dni === cliente.nif)
     : [];
   const clientePresupuestos = todosPresupuestos.filter(p => p.estado === 'aceptado');
   const presup = clientePresupuestos.reduce((s, p) => s + honorariosConAjuste(p), 0);
 
-  function handleDuplicar(p: Presupuesto) {
-    const copia: Presupuesto = {
-      ...p,
-      id: 'pr_' + Date.now(),
-      numero: p.numero + '-copia',
-      estado: 'borrador',
-      fecha: new Date().toISOString().slice(0, 10),
-    };
-    startPresupTransition(async () => {
-      const updated = await upsertPresupuesto(copia);
-      onPresupuestosChange(updated);
-    });
-  }
-
-  function handleAnular(p: Presupuesto) {
-    if (!confirm(`¿Anular el presupuesto ${p.numero}? Se marcará como anulado y no contará en los cálculos.`)) return;
-    startPresupTransition(async () => {
-      const updated = await upsertPresupuesto({ ...p, estado: 'anulado' });
-      onPresupuestosChange(updated);
-    });
-  }
-
+  // ── Factura calculations ────────────────────────────────────────────────────
   const clienteFacturas = cliente.nif
     ? facturas.filter(f => f.clienteNif && f.clienteNif === cliente.nif)
     : [];
@@ -93,6 +86,98 @@ export default function ClientesFicha({ cliente, orgProyectos, facturas, presupu
     { k: 'Email',     v: cliente.email },
     { k: 'Dirección', v: [cliente.direccionCalle, cliente.direccionCPCiudad, cliente.direccionProvincia].filter(Boolean).join(', ') },
   ].filter((r) => r.v);
+
+  // ── Presupuesto handlers ───────────────────────────────────────────────────
+
+  function openPresup(p: Presupuesto) {
+    setPresupModal({ presup: JSON.parse(JSON.stringify(p)), isNew: false });
+  }
+
+  function openNewPresup() {
+    const nuevo = nuevoPresupuestoObj(presupuestos);
+    setPresupModal({
+      presup: {
+        ...nuevo,
+        cliente: {
+          nombre: cliente.nombre,
+          dni:    cliente.nif,
+          tel:    cliente.tel,
+          email:  cliente.email,
+          dir1:   cliente.direccionCalle,
+          dir2:   cliente.direccionCPCiudad,
+          dir3:   cliente.direccionProvincia,
+        },
+        clienteRefId: cliente.id,
+      },
+      isNew: true,
+    });
+  }
+
+  function handlePresupSave(p: Presupuesto) {
+    startPresupTransition(async () => {
+      const updated = await upsertPresupuesto(p);
+      onPresupuestosChange(updated);
+      setPresupModal(null);
+    });
+  }
+
+  function handlePresupDelete(id: string) {
+    if (!confirm('¿Eliminar este presupuesto?')) return;
+    startPresupTransition(async () => {
+      const updated = await deletePresupuesto(id);
+      onPresupuestosChange(updated);
+      setPresupModal(null);
+    });
+  }
+
+  function handleDuplicar(p: Presupuesto) {
+    const copia: Presupuesto = {
+      ...p,
+      id: 'pr_' + Date.now(),
+      numero: p.numero + '-copia',
+      estado: 'borrador',
+      fecha: new Date().toISOString().slice(0, 10),
+    };
+    startPresupTransition(async () => {
+      const updated = await upsertPresupuesto(copia);
+      onPresupuestosChange(updated);
+    });
+  }
+
+  function handleAnular(p: Presupuesto) {
+    if (!confirm(`¿Anular el presupuesto ${p.numero}? Se marcará como anulado y no contará en los cálculos.`)) return;
+    startPresupTransition(async () => {
+      const updated = await upsertPresupuesto({ ...p, estado: 'anulado' });
+      onPresupuestosChange(updated);
+    });
+  }
+
+  // ── Factura handlers ───────────────────────────────────────────────────────
+
+  function openFactura(f: Factura) {
+    setFacturaModal({ factura: f });
+  }
+
+  function openNewFactura() {
+    setFacturaModal({ factura: null });
+  }
+
+  function handleFacturaSave(f: Factura) {
+    startFacturaTransition(async () => {
+      const updated = await upsertFactura(f);
+      onFacturasChange(updated);
+      setFacturaModal(null);
+    });
+  }
+
+  function handleFacturaDelete(id: string) {
+    if (!confirm('¿Eliminar esta factura? Esta acción no se puede deshacer.')) return;
+    startFacturaTransition(async () => {
+      const updated = await deleteFactura(id);
+      onFacturasChange(updated);
+      setFacturaModal(null);
+    });
+  }
 
   return (
     <div>
@@ -196,7 +281,7 @@ export default function ClientesFicha({ cliente, orgProyectos, facturas, presupu
             Facturas emitidas
           </div>
           <button
-            onClick={() => router.push(cliente.nif ? `/contabilidad?clienteNIF=${encodeURIComponent(cliente.nif)}` : '/contabilidad')}
+            onClick={openNewFactura}
             style={{ height: 26, padding: '0 11px', borderRadius: 6, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', border: '1px solid #c8c4bc', background: '#fff', color: '#6b6a66' }}
           >
             + Nueva factura
@@ -220,7 +305,7 @@ export default function ClientesFicha({ cliente, orgProyectos, facturas, presupu
                   ? { color: '#2e7d46', bg: '#e8f3ec' }
                   : { color: '#b07a1e', bg: '#fbf3e0' };
                 return (
-                  <tr key={f.id} onClick={() => router.push(`/contabilidad?facturaId=${f.id}`)}
+                  <tr key={f.id} onClick={() => openFactura(f)}
                     style={{ borderBottom: '1px solid #f4f2ed', cursor: 'pointer' }}
                     onMouseEnter={e => (e.currentTarget.style.background = '#faf9f6')}
                     onMouseLeave={e => (e.currentTarget.style.background = '')}>
@@ -254,7 +339,7 @@ export default function ClientesFicha({ cliente, orgProyectos, facturas, presupu
             Presupuestos
           </div>
           <button
-            onClick={() => router.push(cliente.nif ? `/presupuestos?clienteNif=${encodeURIComponent(cliente.nif)}` : '/presupuestos')}
+            onClick={openNewPresup}
             style={{ height: 26, padding: '0 11px', borderRadius: 6, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', border: '1px solid #c8c4bc', background: '#fff', color: '#6b6a66' }}
           >
             + Nuevo
@@ -276,7 +361,7 @@ export default function ClientesFicha({ cliente, orgProyectos, facturas, presupu
                 const est = ESTADO_PRESUP[p.estado] ?? ESTADO_PRESUP.borrador;
                 const anulado = p.estado === 'anulado';
                 return (
-                  <tr key={p.id} onClick={() => router.push(`/presupuestos?id=${p.id}`)}
+                  <tr key={p.id} onClick={() => openPresup(p)}
                     style={{ borderBottom: '1px solid #f4f2ed', opacity: anulado ? 0.6 : 1, cursor: 'pointer' }}
                     onMouseEnter={e => (e.currentTarget.style.background = '#faf9f6')}
                     onMouseLeave={e => (e.currentTarget.style.background = '')}>
@@ -291,12 +376,12 @@ export default function ClientesFicha({ cliente, orgProyectos, facturas, presupu
                       {anulado ? '—' : fmt(honorariosConAjuste(p))}
                     </td>
                     <td style={{ padding: '8px 10px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <button onClick={() => handleDuplicar(p)} disabled={presupPending}
+                      <button onClick={e => { e.stopPropagation(); handleDuplicar(p); }} disabled={presupPending}
                         style={{ height: 24, padding: '0 8px', borderRadius: 5, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', border: '1px solid #c8c4bc', background: '#fff', color: '#6b6a66', marginRight: 4 }}>
                         Duplicar
                       </button>
                       {!anulado && (
-                        <button onClick={() => handleAnular(p)} disabled={presupPending}
+                        <button onClick={e => { e.stopPropagation(); handleAnular(p); }} disabled={presupPending}
                           style={{ height: 24, padding: '0 8px', borderRadius: 5, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', border: '1px solid #e3b4ae', background: 'transparent', color: '#c0392b' }}>
                           Anular
                         </button>
@@ -309,6 +394,38 @@ export default function ClientesFicha({ cliente, orgProyectos, facturas, presupu
           </table>
         )}
       </div>
+
+      {/* ── Factura modal ─────────────────────────────────────────────────────── */}
+      {facturaModal !== null && (
+        <FacturaModal
+          factura={facturaModal.factura}
+          facturas={facturas}
+          clientes={clientes}
+          presupuestos={presupuestos}
+          initialClienteNIF={facturaModal.factura ? undefined : cliente.nif}
+          onSave={handleFacturaSave}
+          onDelete={handleFacturaDelete}
+          onClose={() => setFacturaModal(null)}
+          isPending={facturaPending}
+        />
+      )}
+
+      {/* ── Presupuesto modal ─────────────────────────────────────────────────── */}
+      {presupModal !== null && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,.5)', overflowY: 'auto', display: 'flex', justifyContent: 'center', padding: '24px 16px' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#faf9f5', borderRadius: 10, width: '100%', maxWidth: 1320, alignSelf: 'flex-start', boxShadow: '0 16px 50px rgba(0,0,0,.25)' }}>
+            <PresupuestoEditor
+              presupuesto={presupModal.presup}
+              clientes={clientes}
+              isNew={presupModal.isNew}
+              onSave={handlePresupSave}
+              onDelete={handlePresupDelete}
+              onCancel={() => setPresupModal(null)}
+              isPending={presupPending}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
