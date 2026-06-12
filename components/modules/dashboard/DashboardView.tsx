@@ -9,6 +9,7 @@ interface Props {
   gastos: Gasto[];
   org: OrgData;
   presupuestos: Presupuesto[];
+  saldoBase?: { importe: number; fecha: string };
 }
 
 const MONTHS = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
@@ -72,7 +73,7 @@ function KPICard({ label, value, badge, note, valueColor }: {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-export default function DashboardView({ facturas, gastos, org, presupuestos }: Props) {
+export default function DashboardView({ facturas, gastos, org, presupuestos, saldoBase }: Props) {
   const now = new Date();
   const CY = now.getFullYear();
   const PY = CY - 1;
@@ -101,6 +102,21 @@ export default function DashboardView({ facturas, gastos, org, presupuestos }: P
   const pendienteCobro = facturas
     .filter(f => f.estado === 'pendiente')
     .reduce((s, f) => s + recTotal(f), 0);
+
+  // saldo actual de tesorería
+  let saldoActual: number | null = null;
+  let saldoBaseLabel = '';
+  if (saldoBase) {
+    const cobrado  = facturas
+      .filter(f => (!f.tipo || f.tipo === 'factura') && f.estado === 'cobrada' && f.fecha > saldoBase.fecha)
+      .reduce((s, f) => s + recTotal(f), 0);
+    const gastado  = gastos
+      .filter(g => g.fecha > saldoBase.fecha)
+      .reduce((s, g) => s + recTotal(g), 0);
+    saldoActual   = saldoBase.importe + cobrado - gastado;
+    const [y, m, d] = saldoBase.fecha.split('-');
+    saldoBaseLabel = `desde ${d}/${m}/${y}`;
+  }
 
   // ── Proyectos activos ──
   const activeProjects = org.projects.filter(p => {
@@ -188,6 +204,12 @@ export default function DashboardView({ facturas, gastos, org, presupuestos }: P
           value={fmtEuro(pendienteCobro)}
           note="total con IVA · todas las facturas"
           valueColor={pendienteCobro > 0 ? '#b07a1e' : undefined}
+        />
+        <KPICard
+          label="Saldo actual estimado"
+          value={saldoActual !== null ? fmtEuro(saldoActual) : '—'}
+          note={saldoActual !== null ? saldoBaseLabel : 'Define un saldo base en Tesorería'}
+          valueColor={saldoActual === null ? '#a09e99' : saldoActual >= 0 ? '#2e7d46' : '#c0392b'}
         />
       </div>
 
