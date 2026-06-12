@@ -25,7 +25,7 @@ interface Props {
 }
 
 const fmt = (n: number) =>
-  new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+  (n || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 
 const BADGE: Record<string, { color: string; bg: string; border: string; label: string }> = {
   activo:     { color: '#2e7d46', bg: '#e8f3ec', border: '#bfe0cb', label: 'Activo' },
