@@ -2,6 +2,7 @@
 
 import type { Factura, Gasto } from '@/lib/types';
 import { recBase, fmt, yearOf, allYears, catColor } from './calculos';
+import { esFacturaReal } from '@/lib/utils/facturas';
 import { CATEGORIAS_GASTO } from './constants';
 
 interface Props { facturas: Factura[]; gastos: Gasto[]; }
@@ -29,7 +30,7 @@ export default function GraficasTab({ facturas, gastos }: Props) {
   // Evolución anual — solo datos reales de Dropbox
   const hist: Record<number, { ing: number; gas: number }> = {};
   years.forEach(y => {
-    const fY = facturas.filter(f => yearOf(f.fecha) === y);
+    const fY = facturas.filter(f => yearOf(f.fecha) === y && esFacturaReal(f));
     const gY = gastos.filter(g => yearOf(g.fecha) === y);
     hist[y] = { ing: fY.reduce((s, f) => s + recBase(f), 0), gas: gY.reduce((s, g) => s + recBase(g), 0) };
   });
@@ -38,7 +39,7 @@ export default function GraficasTab({ facturas, gastos }: Props) {
 
   // Facturación mensual año actual
   const ing = Array(12).fill(0);
-  facturas.filter(f => yearOf(f.fecha) === year).forEach(f => (ing[new Date(f.fecha + 'T00:00:00').getMonth()] += recBase(f)));
+  facturas.filter(f => yearOf(f.fecha) === year && esFacturaReal(f)).forEach(f => (ing[new Date(f.fecha + 'T00:00:00').getMonth()] += recBase(f)));
   const maxM = Math.max(...ing, 1);
 
   // Gastos por categoría

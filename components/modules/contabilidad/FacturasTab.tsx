@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import type { Factura, Cliente, Presupuesto } from '@/lib/types';
 import { recBase, recIVA, recIRPF, recTotal, fmt, trimOf, yearOf, allYears, fechaCorta } from './calculos';
+import { esFacturaReal } from '@/lib/utils/facturas';
 import { upsertFactura, deleteFactura } from './actions';
 import { TAGS } from './constants';
 import FacturaModal from './FacturaModal';
@@ -49,7 +50,8 @@ export default function FacturasTab({ facturas, onUpdate, clientes, presupuestos
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const inYear = facturas.filter(f => yearOf(f.fecha) === year);
+  const inYear     = facturas.filter(f => yearOf(f.fecha) === year);
+  const inYearReal = inYear.filter(esFacturaReal);
   const filtered = inYear.filter(f => {
     if (estado && f.estado !== estado) return false;
     if (trim  && trimOf(f.fecha) !== trim) return false;
@@ -60,9 +62,10 @@ export default function FacturasTab({ facturas, onUpdate, clientes, presupuestos
     }
     return true;
   }).sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const filteredReal = filtered.filter(esFacturaReal);
 
-  // KPIs respetan el filtro de trimestre si está activo
-  const kpiBase  = trim ? inYear.filter(f => trimOf(f.fecha) === trim) : inYear;
+  // KPIs respetan el filtro de trimestre si está activo; proformas excluidas
+  const kpiBase  = trim ? inYearReal.filter(f => trimOf(f.fecha) === trim) : inYearReal;
   const emitido  = kpiBase.reduce((s, f) => s + recBase(f), 0);
   const ivaTotal = kpiBase.reduce((s, f) => s + recIVA(f), 0);
   const cobrado  = kpiBase.filter(f => f.estado === 'cobrada').reduce((s, f) => s + recTotal(f), 0);
@@ -108,7 +111,7 @@ export default function FacturasTab({ facturas, onUpdate, clientes, presupuestos
     const yy = String(today.getFullYear()).slice(2);
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const max = allFacturas
-      .filter(f => f.tipo !== 'proforma')
+      .filter(esFacturaReal)
       .map(f => parseInt(f.numero.split('-')[1] ?? '0', 10))
       .filter(n => !isNaN(n))
       .reduce((a, b) => Math.max(a, b), 0);
@@ -200,8 +203,8 @@ export default function FacturasTab({ facturas, onUpdate, clientes, presupuestos
               (['T1','T2','T3','T4'] as const).flatMap(tg => {
                 const rows = filtered.filter(f => trimOf(f.fecha) === tg);
                 if (!rows.length) return [];
-                const gb = rows.reduce((s, f) => s + recBase(f), 0);
-                const gt = rows.reduce((s, f) => s + recTotal(f), 0);
+                const gb = rows.filter(esFacturaReal).reduce((s, f) => s + recBase(f), 0);
+                const gt = rows.filter(esFacturaReal).reduce((s, f) => s + recTotal(f), 0);
                 return [
                   <tr key={`hdr-${tg}`} style={{ background: '#efece5' }}>
                     <td colSpan={3} style={{ padding: '7px 12px', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', color: '#6b6a66' }}>
@@ -267,7 +270,7 @@ export default function FacturasTab({ facturas, onUpdate, clientes, presupuestos
         </table>
         <div style={{ padding: '9px 12px', fontSize: 11, color: '#6b6a66', background: '#f5f4f0', borderTop: '1px solid #e0ddd5', display: 'flex', justifyContent: 'space-between' }}>
           <span>Mostrando {filtered.length} de {inYear.length} facturas de {year}</span>
-          <span>Base: {fmt(filtered.reduce((s,f) => s+recBase(f),0))} · IVA: {fmt(filtered.reduce((s,f) => s+recIVA(f),0))} · IRPF: {fmt(filtered.reduce((s,f) => s+recIRPF(f),0))}</span>
+          <span>Base: {fmt(filteredReal.reduce((s,f) => s+recBase(f),0))} · IVA: {fmt(filteredReal.reduce((s,f) => s+recIVA(f),0))} · IRPF: {fmt(filteredReal.reduce((s,f) => s+recIRPF(f),0))}</span>
         </div>
       </div>
 

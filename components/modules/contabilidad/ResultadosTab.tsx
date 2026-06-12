@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { Factura, Gasto } from '@/lib/types';
 import { recBase, recTotal, fmt, yearOf, catColor } from './calculos';
+import { esFacturaReal } from '@/lib/utils/facturas';
 import { CATEGORIAS_GASTO } from './constants';
 
 interface Props { facturas: Factura[]; gastos: Gasto[]; }
@@ -22,7 +23,7 @@ function monthlyArrays(
 ): { ing: number[]; gas: number[] } {
   const ing = Array(12).fill(0) as number[];
   const gas = Array(12).fill(0) as number[];
-  facturas.filter(f => yearOf(f.fecha) === year).forEach(f => (ing[monthOf(f.fecha)] += recBase(f)));
+  facturas.filter(f => yearOf(f.fecha) === year && esFacturaReal(f)).forEach(f => (ing[monthOf(f.fecha)] += recBase(f)));
   gastos.filter(g => yearOf(g.fecha) === year).forEach(g => (gas[monthOf(g.fecha)] += recBase(g)));
   return { ing, gas };
 }
@@ -33,7 +34,7 @@ function ingasYtd(
   const ok = (fecha: string) =>
     yearOf(fecha) === year && (maxMonth === undefined || monthOf(fecha) <= maxMonth);
   return {
-    ing: facturas.filter(f => ok(f.fecha)).reduce((s, f) => s + recBase(f), 0),
+    ing: facturas.filter(f => ok(f.fecha) && esFacturaReal(f)).reduce((s, f) => s + recBase(f), 0),
     gas: gastos.filter(g => ok(g.fecha)).reduce((s, g) => s + recBase(g), 0),
   };
 }

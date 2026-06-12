@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import type { Factura, Gasto } from '@/lib/types';
 import { recBase, recTotal, fmt } from './calculos';
+import { esFacturaReal } from '@/lib/utils/facturas';
 import { saveSaldoBase } from './actions';
 
 interface SaldoBase { importe: number; fecha: string }
@@ -61,13 +62,13 @@ export default function TesoreriaTab({ facturas, gastos, initialSaldoBase }: Pro
 
   if (saldoBase) {
     const cobradas  = facturas.filter(f =>
-      (!f.tipo || f.tipo === 'factura') &&
+      esFacturaReal(f) &&
       f.estado === 'cobrada' &&
       f.fecha > saldoBase.fecha
     );
     const gastosPost = gastos.filter(g => g.fecha > saldoBase.fecha);
     const pendientes = facturas.filter(f =>
-      (!f.tipo || f.tipo === 'factura') && f.estado === 'pendiente'
+      esFacturaReal(f) && f.estado === 'pendiente'
     );
 
     cobradoDesde   = cobradas.reduce((s, f) => s + recTotal(f), 0);

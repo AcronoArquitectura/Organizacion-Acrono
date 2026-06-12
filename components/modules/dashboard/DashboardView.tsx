@@ -1,6 +1,7 @@
 import type { Factura, Gasto, Presupuesto } from '@/lib/types';
 import type { OrgData } from '@/lib/data/organizacion';
 import { recBase, recTotal, yearOf, fechaCorta } from '@/components/modules/contabilidad/calculos';
+import { esFacturaReal } from '@/lib/utils/facturas';
 import { getCurrentPhase, getPhaseProgress } from '@/lib/utils/phases';
 import { honorariosConAjuste } from '@/lib/utils/coag';
 
@@ -80,9 +81,9 @@ export default function DashboardView({ facturas, gastos, org, presupuestos, sal
   const CM = now.getMonth(); // 0-indexed, for same-period YTD comparison
 
   // ── Facturas ──
-  const facturasThisYear = facturas.filter(f => yearOf(f.fecha) === CY);
-  const facturasLastYTD  = facturas.filter(f => yearOf(f.fecha) === PY && new Date(f.fecha + 'T00:00:00').getMonth() <= CM);
-  const facturasLastFull = facturas.filter(f => yearOf(f.fecha) === PY);
+  const facturasThisYear = facturas.filter(f => yearOf(f.fecha) === CY && esFacturaReal(f));
+  const facturasLastYTD  = facturas.filter(f => yearOf(f.fecha) === PY && new Date(f.fecha + 'T00:00:00').getMonth() <= CM && esFacturaReal(f));
+  const facturasLastFull = facturas.filter(f => yearOf(f.fecha) === PY && esFacturaReal(f));
 
   const facturacionYTD = facturasThisYear.reduce((s, f) => s + recBase(f), 0);
   const facturacionPY  = facturasLastYTD.reduce((s, f) => s + recBase(f), 0);
@@ -100,7 +101,7 @@ export default function DashboardView({ facturas, gastos, org, presupuestos, sal
 
   // pendiente de cobro: todas las facturas pendientes (todas las épocas), total con IVA
   const pendienteCobro = facturas
-    .filter(f => f.estado === 'pendiente')
+    .filter(f => esFacturaReal(f) && f.estado === 'pendiente')
     .reduce((s, f) => s + recTotal(f), 0);
 
   // saldo actual de tesorería
@@ -108,7 +109,7 @@ export default function DashboardView({ facturas, gastos, org, presupuestos, sal
   let saldoBaseLabel = '';
   if (saldoBase) {
     const cobrado  = facturas
-      .filter(f => (!f.tipo || f.tipo === 'factura') && f.estado === 'cobrada' && f.fecha > saldoBase.fecha)
+      .filter(f => esFacturaReal(f) && f.estado === 'cobrada' && f.fecha > saldoBase.fecha)
       .reduce((s, f) => s + recTotal(f), 0);
     const gastado  = gastos
       .filter(g => g.fecha > saldoBase.fecha)
@@ -154,7 +155,7 @@ export default function DashboardView({ facturas, gastos, org, presupuestos, sal
   // ── Próximos vencimientos ──
   const todayIso = now.toISOString().slice(0, 10);
   const vencimientos = facturas
-    .filter(f => f.estado === 'pendiente' && f.vencimiento)
+    .filter(f => esFacturaReal(f) && f.estado === 'pendiente' && f.vencimiento)
     .sort((a, b) => a.vencimiento.localeCompare(b.vencimiento))
     .slice(0, 6);
 

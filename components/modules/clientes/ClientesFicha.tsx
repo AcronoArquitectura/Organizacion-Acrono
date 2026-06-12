@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { Cliente, Factura, Presupuesto, Proyecto } from '@/lib/types';
 import { getCurrentPhase, getPhaseProgress } from '@/lib/utils/phases';
 import { honorariosConAjuste, nuevoPresupuestoObj } from '@/lib/utils/coag';
+import { esFacturaReal } from '@/lib/utils/facturas';
 import { upsertPresupuesto, deletePresupuesto } from '@/lib/actions/presupuestos';
 import { upsertFactura, deleteFactura } from '@/components/modules/contabilidad/actions';
 import PresupuestoEditor from '@/components/modules/presupuestos/PresupuestoEditor';
@@ -63,11 +64,12 @@ export default function ClientesFicha({
   const clienteFacturas = cliente.nif
     ? facturas.filter(f => f.clienteNif && f.clienteNif === cliente.nif)
     : [];
+  const clienteFacturasReales = clienteFacturas.filter(esFacturaReal);
   const facturaTotal = (f: Factura) =>
     f.lines.reduce((s, l) => { const b = +l.base || 0; return s + b + b * (+l.iva || 0) - b * (+l.irpf || 0); }, 0);
-  const fact = clienteFacturas.reduce((s, f) => s + facturaTotal(f), 0);
-  const cobr = clienteFacturas.filter(f => f.estado === 'cobrada').reduce((s, f) => s + facturaTotal(f), 0);
-  const pend = clienteFacturas.filter(f => f.estado === 'pendiente').reduce((s, f) => s + facturaTotal(f), 0);
+  const fact = clienteFacturasReales.reduce((s, f) => s + facturaTotal(f), 0);
+  const cobr = clienteFacturasReales.filter(f => f.estado === 'cobrada').reduce((s, f) => s + facturaTotal(f), 0);
+  const pend = clienteFacturasReales.filter(f => f.estado === 'pendiente').reduce((s, f) => s + facturaTotal(f), 0);
   const result = clientePresupuestos.length > 0 ? cobr - pend : Math.max(0, cobr - pend);
 
   const badge = BADGE[cliente.estado] ?? BADGE.potencial;
