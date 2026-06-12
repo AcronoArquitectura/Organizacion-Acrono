@@ -177,7 +177,7 @@ export const OBSERVACIONES_SEED = [
   {id:'o9',grupo:'No incluye',txt:'En caso de solicitar más de 15 imágenes virtuales se cobrarán a **100 € + IVA cada una**.'},
   {id:'o10',grupo:'No incluye',txt:'No se incluye **Proyecto de agregación/agrupación/segregación** de las parcelas.'},
   {id:'o11',grupo:'No incluye',txt:'No se incluye **Gestión Catastral, Gestión Notarial ni Registro de la Propiedad**.'},
-  {id:'o12',grupo:'Otros',txt:'Se han calculado estos honorarios sobre una estimación de PEM según los baremos del COA de Granada. Si el **PEM final supera en un 25%** al calculado, se revisarán los honorarios proporcionalmente al incremento/disminución del PEM en un **6,5%**.'},
+  {id:'o12',grupo:'Otros',txt:'Se han calculado estos honorarios sobre una estimación de PEM según los baremos del COA de Granada. Si el **PEM final supera en un 10%** al calculado, se revisarán los honorarios proporcionalmente al incremento/disminución del PEM en un **6,5%**.'},
   {id:'o13',grupo:'Otros',txt:'Tras aprobación definitiva del Proyecto Básico, cualquier modificación no justificada se cobrará aparte, a **25 €/h**.'},
   {id:'o14',grupo:'Otros',txt:'Ácrono Arquitectura S.C.P. se reserva el derecho de **mostrar los trabajos realizados** a potenciales clientes, redes sociales y página web, así como realizar **fotografías/vídeos de la obra terminada**.'},
   {id:'o15',grupo:'Otros',txt:'Los **archivos editables** utilizados son propiedad exclusiva de Ácrono Arquitectura S.C.P. y no se entregarán a terceros.'},
