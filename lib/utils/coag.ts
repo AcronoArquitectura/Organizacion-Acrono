@@ -253,13 +253,14 @@ export function m2Totales(p: Presupuesto): number {
   return p.pemRows.filter(r => r.computaM2).reduce((s, r) => s + (+r.m2 || 0), 0);
 }
 
+export function kReformaAuto(p: Presupuesto): number {
+  const pr = p.capitulos.reduce((s, c) => s + (+c.real || 0), 0) / 100;
+  return 1 + (pr - 0.65);
+}
+
 export function escala(p: Presupuesto): number {
   const base = p.plantilla === 'reforma' ? T_REFORMA.base : T_NUEVA.base;
-  let k = +p.complejidadK || 1;
-  if (p.plantilla === 'reforma') {
-    const pr = p.capitulos.reduce((s, c) => s + (+c.real || 0), 0) / 100;
-    k = 1 * (1 + (pr - 0.65));
-  }
+  const k = +p.complejidadK || 1;
   const sup = m2Totales(p) || 0;
   return k * (sup / base);
 }

@@ -5,7 +5,7 @@ import type { Presupuesto, Cliente, PemRow, Partida } from '@/lib/types';
 import {
   FL_OPTS, FT_VIV, FC_VIV, USOS_OTROS, USOS_URB, OBSERVACIONES_SEED,
   capsFor, plantillaDef, mcBase, rowEurM2, pemTotal, m2Totales,
-  escala, doEurMes, honorariosLineas, honorariosBase, costesTotales,
+  escala, kReformaAuto, doEurMes, honorariosLineas, honorariosBase, costesTotales,
   calcPartidasDef,
 } from '@/lib/utils/coag';
 import PresupuestoSummary from './PresupuestoSummary';
@@ -68,9 +68,13 @@ export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave
     upd({ familia, capitulos: caps.map(c => ({ key: c[0], label: c[1], max: c[2], real: c[2] })) });
   }
 
-  // Plantilla: reset tareas
+  // Plantilla: reset tareas; en reforma inicializa k desde fórmula de capítulos
   function setPlantilla(plantilla: Presupuesto['plantilla']) {
-    upd({ plantilla, tareas: plantillaDef(plantilla) });
+    const patch: Partial<Presupuesto> = { plantilla, tareas: plantillaDef(plantilla) };
+    if (plantilla === 'reforma') {
+      patch.complejidadK = +kReformaAuto(p).toFixed(3);
+    }
+    upd(patch);
   }
 
   function setPemRow(i: number, patch: Partial<PemRow>) {
@@ -447,14 +451,23 @@ export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave
               </div>
               <div style={P.fg}>
                 <label style={P.lbl}>Complejidad k</label>
-                <input type="number" step="0.05" style={tpl ? { ...P.inp, background: '#f5f4f0', color: '#6b6a66' } : P.inp}
-                  disabled={tpl} value={p.complejidadK}
-                  title={tpl ? 'En reforma k se calcula del % de capítulos' : ''}
+                <input type="number" step="0.05" style={P.inp}
+                  value={p.complejidadK}
                   onChange={e => upd({ complejidadK: +e.target.value })} />
+                {tpl && (
+                  <div style={{ ...P.hint, display: 'flex', gap: 6, alignItems: 'center' }}>
+                    Fórmula capítulos: {kReformaAuto(p).toFixed(3)}
+                    <button
+                      type="button"
+                      onClick={() => upd({ complejidadK: +kReformaAuto(p).toFixed(3) })}
+                      style={{ height: 18, padding: '0 6px', borderRadius: 4, fontSize: 10, fontFamily: 'inherit', cursor: 'pointer', border: '1px solid #c8c4bc', background: '#fff', color: '#6b6a66' }}
+                    >↺</button>
+                  </div>
+                )}
               </div>
             </div>
             <div style={P.hint}>
-              Factor de escala I3 = k × ({m2T} m² / {tplBase}) = <b>{I3.toFixed(3)}</b>.
+              Factor de escala I3 = k × ({m2T} m² / {tplBase}) = <b>{I3.toFixed(3)}</b>
             </div>
 
             {/* Entregables colapsables */}
@@ -560,7 +573,7 @@ export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave
               <thead>
                 <tr style={{ borderBottom: '1px solid #e0ddd5' }}>
                   {(['', 'Fase', 'Concepto', 'Tipo', 'Importe', 'Meses', ''] as const).map((h, i) => (
-                    <th key={i} style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.05em', color: '#a09e99', fontWeight: 500, padding: '4px 6px', textAlign: h === 'Importe' ? 'right' : 'left', width: i === 0 ? 20 : h === 'Fase' ? 110 : h === 'Tipo' ? 90 : h === 'Importe' ? 92 : h === 'Meses' ? 64 : i === 6 ? 26 : undefined }}>{h}</th>
+                    <th key={i} style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.05em', color: '#a09e99', fontWeight: 500, padding: '4px 6px', textAlign: h === 'Importe' ? 'right' : 'left', width: i === 0 ? 20 : h === 'Fase' ? 110 : h === 'Tipo' ? 90 : h === 'Importe' ? 92 : h === 'Meses' ? 64 : i === 6 ? 46 : undefined }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -623,7 +636,15 @@ export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave
                         )}
                       </td>
                       <td style={{ padding: '4px 4px' }}>
-                        <button onClick={() => delPartida(i)} style={{ width: 24, height: 24, border: 'none', background: 'none', cursor: 'pointer', color: '#a09e99', fontSize: 15 }}>×</button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                          <div style={{ display: 'flex', gap: 1 }}>
+                            <button onClick={() => movePartida(i, i - 1)} disabled={i === 0}
+                              style={{ width: 20, height: 20, border: '1px solid #e0ddd5', background: '#fff', cursor: i === 0 ? 'default' : 'pointer', color: i === 0 ? '#d0cdc7' : '#6b6a66', fontSize: 10, borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>↑</button>
+                            <button onClick={() => movePartida(i, i + 1)} disabled={i === p.partidas.length - 1}
+                              style={{ width: 20, height: 20, border: '1px solid #e0ddd5', background: '#fff', cursor: i === p.partidas.length - 1 ? 'default' : 'pointer', color: i === p.partidas.length - 1 ? '#d0cdc7' : '#6b6a66', fontSize: 10, borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>↓</button>
+                            <button onClick={() => delPartida(i)} style={{ width: 20, height: 20, border: 'none', background: 'none', cursor: 'pointer', color: '#a09e99', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>×</button>
+                          </div>
+                        </div>
                       </td>
                     </tr>
                   );
