@@ -52,7 +52,6 @@ export default function FacturaModal({ factura, facturas, clientes, presupuestos
   const [dirProvincia, setDirProvincia] = useState(factura?.clienteDireccionProvincia ?? '');
   const [ref, setRef] = useState(factura?.refPresupuesto ?? '');
   const [pie, setPie] = useState(factura?.pieTexto ?? PIE_LEGAL_DEFAULT);
-  const [concepto, setConcepto] = useState(factura?.concepto ?? '');
   const [estado, setEstado] = useState<Factura['estado']>(factura?.estado ?? 'pendiente');
   const [nota, setNota] = useState(factura?.nota ?? '');
   const [tags, setTags] = useState<string[]>(factura?.tags ?? []);
@@ -117,7 +116,7 @@ export default function FacturaModal({ factura, facturas, clientes, presupuestos
       cliente: cliente.trim() || '—', clienteNif: nif.trim(),
       clienteDireccionCalle: dirCalle.trim(), clienteDireccionCPCiudad: dirCPCiudad.trim(), clienteDireccionProvincia: dirProvincia.trim(),
       refPresupuesto: ref.trim(), pieTexto: pie.trim(),
-      concepto: concepto.trim(), estado,
+      concepto: factura?.concepto ?? '', estado,
       tipo: factura?.tipo ?? initialTipo ?? 'factura',
       nota: nota.trim(), tags,
       lines: parsedLines,
@@ -204,10 +203,6 @@ export default function FacturaModal({ factura, facturas, clientes, presupuestos
           </div>
 
           <div style={SEC}>Conceptos facturables</div>
-
-          <div style={FG}><label style={LBL}>Concepto / Proyecto (resumen interno)</label>
-            <input style={INP} value={concepto} onChange={e => setConcepto(e.target.value)} placeholder="vu114 · D.Obra certif. 3" />
-          </div>
 
           {/* Lines header */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 88px 64px 78px 24px', gap: 8, alignItems: 'center', marginBottom: 5, fontSize: 10, textTransform: 'uppercase', letterSpacing: '.05em', color: '#a09e99' }}>
