@@ -71,6 +71,20 @@ export default function PresupuestosView({ initialPresupuestos, clientes, initia
     });
   }
 
+  function handleDuplicate(p: Presupuesto) {
+    const copia: Presupuesto = {
+      ...p,
+      id: 'pr_' + Date.now(),
+      numero: p.numero + ' (copia)',
+      estado: 'borrador',
+      fecha: new Date().toISOString().slice(0, 10),
+    };
+    startTransition(async () => {
+      const updated = await upsertPresupuesto(copia);
+      setPresupuestos(updated);
+    });
+  }
+
   if (editing) {
     return (
       <PresupuestoEditor
@@ -91,6 +105,7 @@ export default function PresupuestosView({ initialPresupuestos, clientes, initia
       onNew={openNew}
       onEdit={openEdit}
       onDelete={handleDelete}
+      onDuplicate={handleDuplicate}
       isPending={isPending}
     />
   );

@@ -1,7 +1,7 @@
 'use client';
 
 import type { Presupuesto } from '@/lib/types';
-import { honorariosExtrasTotal, pemTotal } from '@/lib/utils/coag';
+import { honorariosDesdePartidas, honorariosExtrasTotal, pemTotal } from '@/lib/utils/coag';
 
 const fmt = (n: number) =>
   (Math.round((+n || 0) * 100) / 100).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
@@ -22,13 +22,11 @@ const k: React.CSSProperties = { color: '#a09e99', fontSize: 11 };
 const v: React.CSSProperties = { fontVariantNumeric: 'tabular-nums' };
 
 export default function PresupuestoSummary({ p, isNew, onSave, onPDF, onDelete, onUpd, isPending }: Props) {
-  const fijoPartidas  = p.partidas.filter(r => r.tipo === 'fijo'    && Math.abs(+(r.importe ?? 0)) > 0.005);
+  const fijoPartidas   = p.partidas.filter(r => r.tipo === 'fijo' && Math.abs(+(r.importe ?? 0)) > 0.005);
   const mensualPartidas = p.partidas.filter(r => r.tipo === 'mensual');
-  const extrasTotal   = honorariosExtrasTotal(p);
-  const basePartidas  = fijoPartidas.reduce((s, r) => s + +(r.importe ?? 0), 0)
-                      + mensualPartidas.reduce((s, r) => s + +(r.importe ?? 0) * +(r.meses ?? 0), 0);
-  const base = basePartidas + extrasTotal;
-  const pem  = pemTotal(p);
+  const extrasTotal    = honorariosExtrasTotal(p);
+  const base           = honorariosDesdePartidas(p);
+  const pem            = pemTotal(p);
 
   const inpSt: React.CSSProperties = {
     height: 30, padding: '0 8px', border: '1px solid #c8c4bc', borderRadius: 6,

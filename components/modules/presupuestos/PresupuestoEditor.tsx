@@ -789,16 +789,25 @@ function ObservacionesPanel({ p, onToggle, onAdd, onUpd }: {
   const [newGrupo, setNewGrupo] = useState('Incluye');
   const inpSt: React.CSSProperties = { height: 30, padding: '0 8px', border: '1px solid #c8c4bc', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none', background: '#fff', color: '#333', width: '100%' };
 
-  const all = [...OBSERVACIONES_SEED, ...(p.observacionesCustom ?? [])];
+  // Custom obs shadow seed obs with same id (enables per-presupuesto text/grupo overrides)
+  const custom = p.observacionesCustom ?? [];
+  const customIds = new Set(custom.map(o => o.id));
+  const seeds = OBSERVACIONES_SEED.filter(o => !customIds.has(o.id));
+  const all = [...seeds, ...custom];
+
   const [groupOrders, setGroupOrders] = useState(() => buildObsGroupOrders(all, p.observacionesSel));
   const [dragObs, setDragObs] = useState<{ g: string; i: number } | null>(null);
   const [overObs, setOverObs] = useState<{ g: string; i: number } | null>(null);
 
-  // Sync new custom observations into groupOrders when they're added
+  // Sync newly added observations into groupOrders
   useEffect(() => {
     setGroupOrders(prev => {
       const currentIds = new Set(Object.values(prev).flat());
-      const newItems = all.filter(o => !currentIds.has(o.id));
+      const c = p.observacionesCustom ?? [];
+      const cIds = new Set(c.map(o => o.id));
+      const s = OBSERVACIONES_SEED.filter(o => !cIds.has(o.id));
+      const a = [...s, ...c];
+      const newItems = a.filter(o => !currentIds.has(o.id));
       if (!newItems.length) return prev;
       const next = { ...prev };
       newItems.forEach(o => {
@@ -812,6 +821,38 @@ function ObservacionesPanel({ p, onToggle, onAdd, onUpd }: {
 
   const obsById = new Map(all.map(o => [o.id, o]));
 
+  // Edit text of any obs (seed or custom) — stored as custom override with same id
+  function editObsTxt(id: string, txt: string) {
+    const c = [...(p.observacionesCustom ?? [])];
+    const ci = c.findIndex(o => o.id === id);
+    if (ci >= 0) {
+      c[ci] = { ...c[ci], txt };
+    } else {
+      const seed = OBSERVACIONES_SEED.find(o => o.id === id);
+      if (!seed) return;
+      c.push({ id, grupo: seed.grupo ?? 'Otros', txt });
+    }
+    onUpd({ observacionesCustom: c });
+  }
+
+  // Move obs to a different section; places it at the end of the target group
+  function moveObsToGroup(id: string, newGrupo: string) {
+    const c = [...(p.observacionesCustom ?? [])];
+    const ci = c.findIndex(o => o.id === id);
+    if (ci >= 0) {
+      c[ci] = { ...c[ci], grupo: newGrupo };
+    } else {
+      const seed = OBSERVACIONES_SEED.find(o => o.id === id);
+      if (seed) c.push({ id, grupo: newGrupo, txt: seed.txt ?? '' });
+    }
+    const next = { ...groupOrders };
+    OBS_GRUPOS.forEach(g => { next[g] = (next[g] ?? []).filter(oid => oid !== id); });
+    next[newGrupo] = [...(next[newGrupo] ?? []), id];
+    setGroupOrders(next);
+    const newSel = OBS_GRUPOS.flatMap(g => (next[g] ?? []).filter(oid => p.observacionesSel.includes(oid)));
+    onUpd({ observacionesCustom: c, observacionesSel: newSel });
+  }
+
   function moveObs(grupo: string, from: number, to: number) {
     if (from === to) return;
     const next = { ...groupOrders };
@@ -820,7 +861,6 @@ function ObservacionesPanel({ p, onToggle, onAdd, onUpd }: {
     ids.splice(to, 0, item);
     next[grupo] = ids;
     setGroupOrders(next);
-    // Persist the new intra-group order of checked items via observacionesSel
     const newSel = OBS_GRUPOS.flatMap(g => (next[g] ?? []).filter(id => p.observacionesSel.includes(id)));
     onUpd({ observacionesSel: newSel });
   }
@@ -840,30 +880,43 @@ function ObservacionesPanel({ p, onToggle, onAdd, onUpd }: {
             {items.map((o, idx) => {
               const isDragging = dragObs?.g === g && dragObs.i === idx;
               const isOver = overObs?.g === g && overObs.i === idx && dragObs?.g === g && dragObs.i !== idx;
+              const txt = (o as { txt?: string; text?: string }).txt ?? (o as { text?: string }).text ?? '';
               return (
                 <div
                   key={o.id}
                   draggable
                   onDragStart={e => {
                     const tag = (e.target as HTMLElement).tagName.toLowerCase();
-                    if (['input', 'button'].includes(tag)) { e.preventDefault(); return; }
+                    if (['input', 'select', 'button', 'textarea'].includes(tag)) { e.preventDefault(); return; }
                     setDragObs({ g, i: idx });
                   }}
                   onDragOver={e => { e.preventDefault(); setOverObs({ g, i: idx }); }}
                   onDrop={() => { if (dragObs?.g === g) moveObs(g, dragObs.i, idx); setDragObs(null); setOverObs(null); }}
                   onDragEnd={() => { setDragObs(null); setOverObs(null); }}
                   style={{
-                    display: 'flex', alignItems: 'flex-start', gap: 8,
-                    padding: '6px 0', borderBottom: '1px solid #f4f2ed', fontSize: 12,
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '5px 0', borderBottom: '1px solid #f4f2ed',
                     opacity: isDragging ? 0.35 : 1,
                     background: isOver ? '#f5f2ec' : 'transparent',
                     transition: 'background .1s',
                   }}
                 >
-                  <span style={{ flexShrink: 0, marginTop: 3, cursor: 'grab' }}><DragHandle /></span>
+                  <span style={{ flexShrink: 0, cursor: 'grab' }}><DragHandle /></span>
                   <input type="checkbox" checked={p.observacionesSel.includes(o.id)} onChange={e => onToggle(o.id, e.target.checked)}
-                    style={{ marginTop: 3, accentColor: '#b07a1e', width: 'auto', height: 'auto', flexShrink: 0 }} />
-                  <div style={{ flex: 1 }}>{(o as { txt?: string }).txt}</div>
+                    style={{ accentColor: '#b07a1e', width: 'auto', height: 'auto', flexShrink: 0 }} />
+                  <input
+                    type="text"
+                    value={txt}
+                    onChange={e => editObsTxt(o.id, e.target.value)}
+                    style={{ flex: 1, height: 28, padding: '0 7px', border: '1px solid #e0ddd5', borderRadius: 5, fontSize: 11.5, fontFamily: 'inherit', outline: 'none', background: '#fff', color: '#333' }}
+                  />
+                  <select
+                    value={o.grupo ?? 'Otros'}
+                    onChange={e => moveObsToGroup(o.id, e.target.value)}
+                    style={{ height: 28, padding: '0 4px', border: '1px solid #e0ddd5', borderRadius: 5, fontSize: 11, fontFamily: 'inherit', outline: 'none', background: '#fff', color: '#6b6a66', flexShrink: 0, width: 100 }}
+                  >
+                    {OBS_GRUPOS.map(gg => <option key={gg} value={gg}>{gg}</option>)}
+                  </select>
                 </div>
               );
             })}

@@ -134,7 +134,7 @@ export default function ClientesFicha({
     const copia: Presupuesto = {
       ...p,
       id: 'pr_' + Date.now(),
-      numero: p.numero + '-copia',
+      numero: p.numero + ' (copia)',
       estado: 'borrador',
       fecha: new Date().toISOString().slice(0, 10),
     };
@@ -413,7 +413,12 @@ export default function ClientesFicha({
       {/* ── Presupuesto modal ─────────────────────────────────────────────────── */}
       {presupModal !== null && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,.5)', overflowY: 'auto', display: 'flex', justifyContent: 'center', padding: '24px 16px' }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#faf9f5', borderRadius: 10, width: '100%', maxWidth: 1320, alignSelf: 'flex-start', boxShadow: '0 16px 50px rgba(0,0,0,.25)' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#faf9f5', borderRadius: 10, width: '100%', maxWidth: 1320, alignSelf: 'flex-start', boxShadow: '0 16px 50px rgba(0,0,0,.25)', position: 'relative' }}>
+            <button
+              onClick={() => setPresupModal(null)}
+              style={{ position: 'absolute', top: 14, right: 18, zIndex: 10, background: 'none', border: 'none', cursor: 'pointer', fontSize: 24, color: '#a09e99', lineHeight: 1, padding: 0 }}
+              aria-label="Cerrar"
+            >×</button>
             <PresupuestoEditor
               presupuesto={presupModal.presup}
               clientes={clientes}

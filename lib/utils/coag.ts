@@ -318,6 +318,14 @@ export function honorariosExtrasTotal(p: Presupuesto): number {
   return p.extras.reduce((s, e) => s + (e.aplica ? (+e.horas || 0) * (+p.eurHora || 0) : 0), 0);
 }
 
+export function honorariosDesdePartidas(p: Presupuesto): number {
+  const fijo = p.partidas.filter(r => r.tipo === 'fijo' && Math.abs(+(r.importe ?? 0)) > 0.005);
+  const mens = p.partidas.filter(r => r.tipo === 'mensual');
+  return fijo.reduce((s, r) => s + +(r.importe ?? 0), 0)
+       + mens.reduce((s, r) => s + +(r.importe ?? 0) * +(r.meses ?? 0), 0)
+       + honorariosExtrasTotal(p);
+}
+
 export function honorariosBase(p: Presupuesto): number {
   const L = honorariosLineas(p);
   const fijos = L.filter(l => l.tipo === 'fijo').reduce((s, l) => s + l.importe, 0);
@@ -347,7 +355,7 @@ export function costesTotales(p: Presupuesto): CostesResult {
   const ggbi      = (pem + ajuste) * c.ggbiPct / 100;
   const ivaC      = (pem + ajuste + ggbi) * c.ivaConstrPct / 100;
   const costeObra = pem + ajuste + ggbi + ivaC;
-  const honArq    = honorariosBase(p) * 1.21;
+  const honArq    = honorariosDesdePartidas(p) * 1.21;
   const honTec    = (+c.honorariosTecnico || 0) * 1.21;
   const visados   = (+c.visados || 0) * 1.21;
   const licObra   = pem * c.licenciaObraPct / 100;
