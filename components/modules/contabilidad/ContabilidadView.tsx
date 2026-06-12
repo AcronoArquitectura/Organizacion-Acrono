@@ -7,6 +7,7 @@ import GastosTab from './GastosTab';
 import ProveedoresTab from './ProveedoresTab';
 import ResultadosTab from './ResultadosTab';
 import ImportarTab from './ImportarTab';
+import TesoreriaTab from './TesoreriaTab';
 
 interface Props {
   initialFacturas: Factura[];
@@ -16,19 +17,21 @@ interface Props {
   presupuestos: Presupuesto[];
   initialClienteNIF?: string;
   initialFacturaId?: string;
+  initialSaldoBase?: { importe: number; fecha: string };
 }
 
-type Tab = 'facturas' | 'gastos' | 'proveedores' | 'resultados' | 'importar';
+type Tab = 'facturas' | 'gastos' | 'proveedores' | 'resultados' | 'tesoreria' | 'importar';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'facturas',    label: 'Facturas emitidas' },
   { id: 'gastos',      label: 'Gastos' },
   { id: 'proveedores', label: 'Proveedores' },
   { id: 'resultados',  label: 'Resultados' },
+  { id: 'tesoreria',   label: 'Tesorería' },
   { id: 'importar',    label: 'Importar datos' },
 ];
 
-export default function ContabilidadView({ initialFacturas, initialGastos, initialProveedores, clientes, presupuestos, initialClienteNIF, initialFacturaId }: Props) {
+export default function ContabilidadView({ initialFacturas, initialGastos, initialProveedores, clientes, presupuestos, initialClienteNIF, initialFacturaId, initialSaldoBase }: Props) {
   const [tab, setTab] = useState<Tab>('facturas');
   const [facturas, setFacturas] = useState<Factura[]>(initialFacturas);
   const [gastos, setGastos] = useState<Gasto[]>(initialGastos);
@@ -60,6 +63,7 @@ export default function ContabilidadView({ initialFacturas, initialGastos, initi
         {tab === 'gastos'      && <GastosTab gastos={gastos} proveedores={proveedores} onUpdateGastos={setGastos} onUpdateProveedores={setProveedores} isPending={isPending} startTransition={startTransition} />}
         {tab === 'proveedores' && <ProveedoresTab proveedores={proveedores} gastos={gastos} onUpdate={setProveedores} isPending={isPending} startTransition={startTransition} />}
         {tab === 'resultados'  && <ResultadosTab facturas={facturas} gastos={gastos} />}
+        {tab === 'tesoreria'   && <TesoreriaTab facturas={facturas} gastos={gastos} initialSaldoBase={initialSaldoBase} />}
         {tab === 'importar'    && (
           <ImportarTab
             onImport={({ facturas: f, gastos: g, proveedores: p }) => {

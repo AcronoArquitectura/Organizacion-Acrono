@@ -129,6 +129,7 @@ export async function readAllData(): Promise<AcronoData> {
       facturas:    raw.contabilidad?.facturas    ?? [],
       gastos:      raw.contabilidad?.gastos      ?? [],
       proveedores: raw.contabilidad?.proveedores ?? [],
+      saldoBase:   raw.contabilidad?.saldoBase,
     },
   };
 }

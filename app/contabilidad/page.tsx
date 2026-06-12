@@ -17,6 +17,7 @@ export default async function ContabilidadPage({
       presupuestos={data.presupuestos}
       initialClienteNIF={clienteNIF}
       initialFacturaId={facturaId}
+      initialSaldoBase={data.contabilidad.saldoBase}
     />
   );
 }

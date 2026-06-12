@@ -78,6 +78,13 @@ export async function deleteProveedor(id: string): Promise<Proveedor[]> {
   return proveedores;
 }
 
+// ── Tesorería ─────────────────────────────────────────────────────────────────
+
+export async function saveSaldoBase(saldoBase: { importe: number; fecha: string }): Promise<void> {
+  const data = await readAllData();
+  await writeAllData({ ...data, contabilidad: { ...data.contabilidad, saldoBase } });
+}
+
 // ── Importación de datos históricos ──────────────────────────────────────────
 
 // Garantiza que un cliente tenga todos los campos requeridos por ClientesFicha/ClientesResumen.

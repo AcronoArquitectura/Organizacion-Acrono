@@ -255,5 +255,6 @@ export interface AcronoData {
     facturas: Factura[];
     gastos: Gasto[];
     proveedores: Proveedor[];
+    saldoBase?: { importe: number; fecha: string };
   };
 }
