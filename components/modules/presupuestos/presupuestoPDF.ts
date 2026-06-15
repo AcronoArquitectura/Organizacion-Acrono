@@ -283,7 +283,7 @@ ${obs.length ? `<div class="page">
   ${pemCalcHTML(p)}
   <table class="t">
     <tr class="th"><td>Concepto</td><td class="r">Precio</td></tr>
-    ${ctFilas.map(f => `<tr><td>${esc(f[0] as string)} ${f[2] ? '<span class="est">Estimación</span>' : ''}</td><td class="r">${fmt0(f[1] as number)}</td></tr>`).join('')}
+    ${ctFilas.filter(f => (f[1] as number) !== 0).map(f => `<tr><td>${esc(f[0] as string)} ${f[2] ? '<span class="est">Estimación</span>' : ''}</td><td class="r">${fmt0(f[1] as number)}</td></tr>`).join('')}
     <tr class="fase-h"><td>TOTAL</td><td class="r">${fmt0(ctTotal)}</td></tr>
   </table>
   ${pieHTML()}
