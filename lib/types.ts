@@ -241,6 +241,77 @@ export interface Presupuesto {
   notaInterna: string;
 }
 
+// ── Solicitudes (intake Jotform) ──────────────────────────────────────────────
+
+export interface EstanciaSolicitud {
+  concepto: string;
+  m2Util: number;       // metros cuadrados útiles (editables por el usuario)
+  coef: number;         // coeficiente sobre Mc para pemRows (1.0=vivienda, 0.8=compl, 0.6=garaje, 0.5=ext)
+  esPiscina: boolean;   // si true → modo manual en el presupuesto; usa eurM2Piscina
+  eurM2Piscina: number; // €/m² fijo cuando esPiscina=true
+}
+
+export interface Solicitud {
+  id: string;                  // 'sol_' + timestamp
+  fechaRecepcion: string;      // ISO 8601
+  estado: 'nueva' | 'revisada' | 'convertida' | 'descartada';
+  presupuestoId: string | null;
+
+  // Contacto
+  nombre: string;
+  email: string;
+  telefono: string;
+  tipo_cliente: string;
+
+  // Proyecto
+  tipo_proyecto: string;
+  municipio_provincia: string;
+  referencia_catastral: string;
+
+  // Datos constructivos del formulario
+  m2_solar: number;
+  n_plantas: number;
+  n_dormitorios: number;
+  n_banos: number;
+  n_aseos: number;
+  cocina: string;
+  despacho: boolean;
+  lavadero: boolean;
+  despensa: boolean;
+  garaje: boolean;
+  n_coches: number;
+  trastero: boolean;
+  piscina: boolean;
+  piscina_largo: number;
+  piscina_ancho: number;
+  porche: boolean;
+
+  // Contexto económico
+  presupuesto_cliente: number;
+  plazo: string;
+
+  // Notas libres (campo q38_cuentanos — confirmar clave exacta en Jotform)
+  notas_libres: string;
+
+  // URLs de archivos adjuntos subidos en el formulario
+  documentacion: string[];
+
+  // Estancias propuestas (generadas automáticamente, editables en el editor)
+  estancias: EstanciaSolicitud[];
+
+  // Parámetros COAG globales (precargados desde tipo_proyecto, editables en el editor)
+  familia: 'viviendas' | 'otros' | 'urbanizacion';
+  plantilla: 'nueva' | 'reforma';
+  flKey: 'A' | 'B';
+  ftKey: 'aislada' | 'adosada' | 'medianeras' | 'plurifamiliar';
+  fcKey: 'a' | 'b' | 'c' | 'd';
+  usoKey: string;
+  urbCalle: boolean;
+  mo: number;
+  mu: number;
+  complejidadK: number;
+}
+
 // ── Root data shape ───────────────────────────────────────────────────────────
 
 export interface AcronoData {

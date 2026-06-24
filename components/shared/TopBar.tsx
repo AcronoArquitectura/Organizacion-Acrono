@@ -7,6 +7,7 @@ const TABS = [
   { label: 'Portada', href: '/' },
   { label: 'Clientes', href: '/clientes' },
   { label: 'Presupuestos', href: '/presupuestos' },
+  { label: 'Solicitudes', href: '/solicitudes' },
   { label: 'Contabilidad', href: '/contabilidad' },
   { label: 'Organización', href: '/organizacion' },
 ] as const;
