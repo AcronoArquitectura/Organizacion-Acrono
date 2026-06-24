@@ -200,6 +200,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'wrong_form', formID }, { status: 400 });
   }
 
+  // DEBUG TEMPORAL — eliminar tras confirmar claves
+  console.log('[intake:debug] all keys:', Object.keys(raw).join(' | '));
+  const q30candidates = Object.entries(raw).filter(([k]) => k.startsWith('q30_'));
+  const q47candidates = Object.entries(raw).filter(([k]) => k.startsWith('q47_'));
+  console.log('[intake:debug] q30 fields:', JSON.stringify(q30candidates));
+  console.log('[intake:debug] q47 fields:', JSON.stringify(q47candidates));
+
   // 3. Campos comunes (todas las ramas)
   const nombre            = parseName(raw['q3_q3_fullname1']);
   const email             = toStr(raw['q4_q4_email2']);
@@ -208,15 +215,17 @@ export async function POST(req: NextRequest) {
   const tipo_proyecto     = toStr(raw['q7_q7_radio5']);
   const como_nos_conocio  = toStr(raw['q43_comoNoscomo_nos_conocio']);
   const presupuesto_cliente = toNum(raw['q29_q29_number27']);
-  const plazo_inicio_proyecto = toStr(raw['q30_textbox28']);
-  const plazo_inicio_obra     = toStr(raw['q47_plazoDeseado']);
+  const plazo_inicio_proyecto = toStr(raw['q30_textbox28'] ?? raw['q30_q30_textbox28']);
+  const plazo_inicio_obra     = toStr(raw['q47_textbox29'] ?? raw['q47_plazoDeseado'] ?? raw['q47_q47_textbox29']);
   const notas_libres      = toStr(raw['q38_cuentanos']);
 
-  const documentacion: string[] = [];
-  Object.values(raw).forEach(v => {
-    if (typeof v === 'string' && v.startsWith('https://') && v.includes('jotform')) documentacion.push(v);
-    else if (Array.isArray(v)) v.forEach(u => { if (typeof u === 'string' && u.startsWith('https://')) documentacion.push(u); });
-  });
+  // Solo URLs de archivos reales (campo q33 de fileupload); filtra URLs de API/confirmación
+  const rawDoc = raw['q33_fileupload31'] ?? raw['q33_fileupload'];
+  const documentacion: string[] = Array.isArray(rawDoc)
+    ? rawDoc.filter((u): u is string => typeof u === 'string' && u.startsWith('https://'))
+    : typeof rawDoc === 'string' && rawDoc.startsWith('https://')
+      ? [rawDoc]
+      : [];
 
   // 4. Campos de localización según rama
   let solar_direccion  = '', solar_municipio   = '', solar_refCatastral = '', solar_superficie  = 0;
