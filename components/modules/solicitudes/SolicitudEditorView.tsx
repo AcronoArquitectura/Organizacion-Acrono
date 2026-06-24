@@ -183,7 +183,7 @@ export default function SolicitudEditorView({ solicitud }: Props) {
           {/* Panel 2: Contexto del cliente (read-only) */}
           <div style={P.panel}>
             <div style={P.title}>Contexto del cliente (del formulario)</div>
-            <div style={P.row3}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
               <div>
                 <div style={P.lbl}>Presupuesto indicado</div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: '#333' }}>
@@ -193,8 +193,12 @@ export default function SolicitudEditorView({ solicitud }: Props) {
                 </div>
               </div>
               <div>
-                <div style={P.lbl}>Plazo</div>
-                <div style={{ fontSize: 13, color: '#333' }}>{sol.plazo || '—'}</div>
+                <div style={P.lbl}>Inicio proyecto</div>
+                <div style={{ fontSize: 13, color: '#333' }}>{sol.plazo_inicio_proyecto || sol.plazo || '—'}</div>
+              </div>
+              <div>
+                <div style={P.lbl}>Inicio obra</div>
+                <div style={{ fontSize: 13, color: '#333' }}>{sol.plazo_inicio_obra || '—'}</div>
               </div>
               <div>
                 <div style={P.lbl}>Documentación</div>
@@ -209,10 +213,21 @@ export default function SolicitudEditorView({ solicitud }: Props) {
                 }
               </div>
             </div>
-            {sol.notas_libres && (
-              <div style={{ marginTop: 10, padding: '8px 10px', background: '#fffdf0', border: '1px solid #e8ddb0', borderRadius: 5, fontSize: 12, color: '#6b6a66', lineHeight: 1.6 }}>
-                <span style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.08em', color: '#a09e99', display: 'block', marginBottom: 3 }}>Notas libres del formulario</span>
-                {sol.notas_libres}
+            {/* Notas y descripciones del formulario */}
+            {(sol.notas_libres || sol.descripcion_necesidades) && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                {sol.notas_libres && (
+                  <div style={{ padding: '8px 10px', background: '#fffdf0', border: '1px solid #e8ddb0', borderRadius: 5, fontSize: 12, color: '#6b6a66', lineHeight: 1.6 }}>
+                    <span style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.08em', color: '#a09e99', display: 'block', marginBottom: 3 }}>Notas del cliente</span>
+                    {sol.notas_libres}
+                  </div>
+                )}
+                {sol.descripcion_necesidades && (
+                  <div style={{ padding: '8px 10px', background: '#f5f4f0', border: '1px solid #e0ddd5', borderRadius: 5, fontSize: 12, color: '#6b6a66', lineHeight: 1.6 }}>
+                    <span style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.08em', color: '#a09e99', display: 'block', marginBottom: 3 }}>Descripción de necesidades</span>
+                    {sol.descripcion_necesidades}
+                  </div>
+                )}
               </div>
             )}
           </div>
