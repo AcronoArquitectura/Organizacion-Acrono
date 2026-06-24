@@ -47,7 +47,7 @@ function conceptoPorCoef(coef: number): string {
   return NOMBRE_GRUPO[k] ?? `Zona (×${coef})`;
 }
 
-export function estanciasToPemRows(estancias: EstanciaSolicitud[]): PemRow[] {
+function estanciasToPemRows(estancias: EstanciaSolicitud[]): PemRow[] {
   const piscs   = estancias.filter(e => e.esPiscina);
   const normales = estancias.filter(e => !e.esPiscina);
 
