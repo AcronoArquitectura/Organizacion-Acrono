@@ -170,12 +170,17 @@ export async function generarPresupuesto(
     tareas: plantillaDef(sol.plantilla),
     extras: EXTRAS_LIST.map(l => ({ label: l, aplica: false, horas: 0 })),
 
-    // Nota interna con contexto del cliente (presupuesto y plazo que mencionó)
+    // Nota interna con contexto del cliente
     notaInterna: [
       sol.presupuesto_cliente > 0
         ? `Presupuesto cliente: ${sol.presupuesto_cliente.toLocaleString('es-ES')} €`
         : '',
-      sol.plazo ? `Plazo: ${sol.plazo}` : '',
+      (sol.plazo_inicio_proyecto || sol.plazo)
+        ? `Inicio proyecto: ${sol.plazo_inicio_proyecto || sol.plazo}`
+        : '',
+      sol.plazo_inicio_obra
+        ? `Inicio obra: ${sol.plazo_inicio_obra}`
+        : '',
     ].filter(Boolean).join(' · '),
 
     descripcionTrabajo:  DESCRIPCION_TRABAJO_DEF,

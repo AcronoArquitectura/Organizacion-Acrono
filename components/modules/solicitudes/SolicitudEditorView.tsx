@@ -68,7 +68,7 @@ export default function SolicitudEditorView({ solicitud }: Props) {
     upd({
       estancias: [
         ...sol.estancias,
-        { concepto: '', m2Util: 0, coef: 1.0, esPiscina: false, eurM2Piscina: 0 },
+        { concepto: '', m2Util: 0, coef: 1.0, calidad: 'vivienda' as const, esPiscina: false, eurM2Piscina: 0 },
       ],
     });
   }

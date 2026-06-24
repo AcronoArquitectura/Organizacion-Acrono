@@ -247,6 +247,7 @@ export interface EstanciaSolicitud {
   concepto: string;
   m2Util: number;       // metros cuadrados útiles (editables por el usuario)
   coef: number;         // coeficiente sobre Mc para pemRows (1.0=vivienda, 0.8=compl, 0.6=garaje, 0.5=ext)
+  calidad: 'vivienda' | 'menor' | 'exterior'; // clasificación simplificada del formulario
   esPiscina: boolean;   // si true → modo manual en el presupuesto; usa eurM2Piscina
   eurM2Piscina: number; // €/m² fijo cuando esPiscina=true
 }
@@ -265,11 +266,11 @@ export interface Solicitud {
 
   // Proyecto
   tipo_proyecto: string;
-  municipio_provincia: string;
-  referencia_catastral: string;
+  municipio_provincia: string;  // derivado de solar_municipio o local_municipio
+  referencia_catastral: string; // derivado de solar_refCatastral o local_refCatastral
 
   // Datos constructivos del formulario
-  m2_solar: number;
+  m2_solar: number;             // derivado de solar_superficie
   n_plantas: number;
   n_dormitorios: number;
   n_banos: number;
@@ -288,9 +289,9 @@ export interface Solicitud {
 
   // Contexto económico
   presupuesto_cliente: number;
-  plazo: string;
+  plazo: string;                // = plazo_inicio_proyecto (backward compat)
 
-  // Notas libres (campo q38_cuentanos — confirmar clave exacta en Jotform)
+  // Notas libres
   notas_libres: string;
 
   // URLs de archivos adjuntos subidos en el formulario
@@ -310,6 +311,34 @@ export interface Solicitud {
   mo: number;
   mu: number;
   complejidadK: number;
+
+  // ── Campos ampliados (formulario actualizado) ──────────────────────────────
+  como_nos_conocio?: string;
+  plazo_inicio_proyecto?: string;  // q30 — cuándo quiere iniciar el proyecto
+  plazo_inicio_obra?: string;      // q47 — cuándo quiere iniciar la obra
+  quiere_sotano?: boolean;
+
+  // Localización solar/parcela (Obra nueva · Reforma · Hotel · Equipamiento)
+  solar_direccion?: string;
+  solar_municipio?: string;
+  solar_refCatastral?: string;
+  solar_superficie?: number;
+
+  // Localización local (Local · Clínica · Restauración)
+  local_direccion?: string;
+  local_municipio?: string;
+  local_refCatastral?: string;
+  local_superficie?: number;
+
+  // Bloque reforma
+  ref_sup_vivienda_actual?: number;
+  ref_sup_garaje_trastero?: number;
+  ref_sup_piscina?: number;
+  ref_sup_porche?: number;
+  ref_sup_ampliacion_estimada?: number;
+
+  // Hotel / Equipamiento público
+  descripcion_necesidades?: string;
 }
 
 // ── Root data shape ───────────────────────────────────────────────────────────
