@@ -200,12 +200,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'wrong_form', formID }, { status: 400 });
   }
 
-  // DEBUG TEMPORAL — eliminar tras confirmar claves
-  console.log('[intake:debug] all keys:', Object.keys(raw).join(' | '));
-  const q30candidates = Object.entries(raw).filter(([k]) => k.startsWith('q30_'));
-  const q47candidates = Object.entries(raw).filter(([k]) => k.startsWith('q47_'));
-  console.log('[intake:debug] q30 fields:', JSON.stringify(q30candidates));
-  console.log('[intake:debug] q47 fields:', JSON.stringify(q47candidates));
 
   // 3. Campos comunes (todas las ramas)
   const nombre            = parseName(raw['q3_q3_fullname1']);
@@ -213,11 +207,11 @@ export async function POST(req: NextRequest) {
   const telefono          = parsePhone(raw['q5_q5_phone3']).replace(/[^+\d]/g, '');
   const tipo_cliente      = toStr(raw['q6_q6_radio4']);
   const tipo_proyecto     = toStr(raw['q7_q7_radio5']);
-  const como_nos_conocio  = toStr(raw['q43_comoNoscomo_nos_conocio']);
-  const presupuesto_cliente = toNum(raw['q29_q29_number27']);
-  const plazo_inicio_proyecto = toStr(raw['q30_textbox28'] ?? raw['q30_q30_textbox28']);
-  const plazo_inicio_obra     = toStr(raw['q47_textbox29'] ?? raw['q47_plazoDeseado'] ?? raw['q47_q47_textbox29']);
-  const notas_libres      = toStr(raw['q38_cuentanos']);
+  const como_nos_conocio      = toStr(raw['q43_comoNos']);
+  const presupuesto_cliente   = toNum(raw['q29_q29_number27']);
+  const plazo_inicio_proyecto = toStr(raw['q30_q30_textbox28']);
+  const plazo_inicio_obra     = toStr(raw['q47_plazoDeseado']);
+  const notas_libres          = toStr(raw['q38_cuentanosCualquier']);
 
   // Solo URLs de archivos reales (campo q33 de fileupload); filtra URLs de API/confirmación
   const rawDoc = raw['q33_fileupload31'] ?? raw['q33_fileupload'];
