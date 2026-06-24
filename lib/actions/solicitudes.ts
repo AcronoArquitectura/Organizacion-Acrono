@@ -144,7 +144,7 @@ export async function generarPresupuesto(
       titulo:          tituloPorTipo(sol.tipo_proyecto),
       servicio:        'Arquitectura',
       lugarMunicipio:  municipio,
-      lugarDir:        '',   // no capturado
+      lugarDir:        sol.solar_direccion || sol.local_direccion || '',
       refCatastral:    sol.referencia_catastral,
     },
 

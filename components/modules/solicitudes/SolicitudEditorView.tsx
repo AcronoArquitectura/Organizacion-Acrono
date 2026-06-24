@@ -167,16 +167,29 @@ export default function SolicitudEditorView({ solicitud }: Props) {
                 <input style={P.inp} value={sol.tipo_proyecto} onChange={e => upd({ tipo_proyecto: e.target.value })} />
               </div>
             </div>
-            <div style={P.row3}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
               <div style={P.fg}><label style={P.lbl}>Municipio / Provincia</label>
                 <input style={P.inp} value={sol.municipio_provincia} onChange={e => upd({ municipio_provincia: e.target.value })} />
               </div>
+              <div style={P.fg}><label style={P.lbl}>Dirección actuación</label>
+                <input style={P.inp}
+                  value={sol.solar_direccion || sol.local_direccion || ''}
+                  onChange={e => {
+                    const t = sol.tipo_proyecto.toLowerCase();
+                    const isLocal = t.includes('local') || t.includes('oficina') || t.includes('cl') || t.includes('sanitario') || t.includes('restaur');
+                    upd(isLocal ? { local_direccion: e.target.value } : { solar_direccion: e.target.value });
+                  }}
+                />
+              </div>
+            </div>
+            <div style={P.row3}>
               <div style={P.fg}><label style={P.lbl}>Ref. catastral</label>
                 <input style={P.inp} value={sol.referencia_catastral} onChange={e => upd({ referencia_catastral: e.target.value })} />
               </div>
-              <div style={P.fg}><label style={P.lbl}>m² solar</label>
+              <div style={P.fg}><label style={P.lbl}>m² solar / local</label>
                 <input type="number" style={P.inp} value={sol.m2_solar || ''} onChange={e => upd({ m2_solar: +e.target.value || 0 })} />
               </div>
+              <div />
             </div>
           </div>
 
