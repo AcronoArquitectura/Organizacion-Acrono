@@ -1,4 +1,5 @@
 import type { Factura, Gasto, Presupuesto } from '@/lib/types';
+import { formatearMoneda } from '@/lib/utils/formato';
 import type { OrgData } from '@/lib/data/organizacion';
 import { recBase, recTotal, yearOf, fechaCorta } from '@/components/modules/contabilidad/calculos';
 import { esFacturaReal } from '@/lib/utils/facturas';
@@ -14,10 +15,6 @@ interface Props {
 }
 
 const MONTHS = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
-
-function fmtEuro(n: number): string {
-  return Math.round(n || 0).toLocaleString('es-ES') + ' €';
-}
 
 function niceMax(v: number): number {
   if (v <= 0) return 10000;
@@ -177,20 +174,20 @@ export default function DashboardView({ facturas, gastos, org, presupuestos, sal
       <div style={{ display: 'flex', gap: 12, marginBottom: 18, flexWrap: 'wrap' }}>
         <KPICard
           label="Facturación YTD"
-          value={fmtEuro(facturacionYTD)}
+          value={formatearMoneda(facturacionYTD)}
           badge={delta(facturacionYTD, facturacionPY)}
           note={periodNote}
         />
         <KPICard
           label="Gastos YTD"
-          value={fmtEuro(gastosYTD)}
+          value={formatearMoneda(gastosYTD)}
           badge={delta(gastosYTD, gastosPY)}
           note={periodNote}
           valueColor={gastosYTD > facturacionYTD ? '#c0392b' : undefined}
         />
         <KPICard
           label="Resultado neto"
-          value={fmtEuro(resultadoNeto)}
+          value={formatearMoneda(resultadoNeto)}
           badge={delta(resultadoNeto, resultadoNetoPY)}
           note={periodNote}
           valueColor={resultadoNeto < 0 ? '#c0392b' : '#2e7d46'}
@@ -202,13 +199,13 @@ export default function DashboardView({ facturas, gastos, org, presupuestos, sal
         </div>
         <KPICard
           label="Pendiente de cobro"
-          value={fmtEuro(pendienteCobro)}
+          value={formatearMoneda(pendienteCobro)}
           note="total con IVA · todas las facturas"
           valueColor={pendienteCobro > 0 ? '#b07a1e' : undefined}
         />
         <KPICard
           label="Saldo actual estimado"
-          value={saldoActual !== null ? fmtEuro(saldoActual) : '—'}
+          value={saldoActual !== null ? formatearMoneda(saldoActual) : '—'}
           note={saldoActual !== null ? saldoBaseLabel : 'Define un saldo base en Tesorería'}
           valueColor={saldoActual === null ? '#a09e99' : saldoActual >= 0 ? '#2e7d46' : '#c0392b'}
         />
@@ -281,7 +278,7 @@ export default function DashboardView({ facturas, gastos, org, presupuestos, sal
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 11, marginBottom: 5 }}>
                     <span style={{ color: '#333' }}>{g.label}</span>
                     <span style={{ color: '#6b6a66', fontSize: 10, fontVariantNumeric: 'tabular-nums' }}>
-                      {g.count} exp. · {fmtEuro(g.total)}
+                      {g.count} exp. · {formatearMoneda(g.total)}
                     </span>
                   </div>
                   <div style={{ height: 8, background: '#f0ede7', borderRadius: 4 }}>
@@ -385,7 +382,7 @@ export default function DashboardView({ facturas, gastos, org, presupuestos, sal
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
                       <div style={{ fontSize: 11, fontWeight: 500, fontVariantNumeric: 'tabular-nums', color: '#333' }}>
-                        {fmtEuro(recTotal(f))}
+                        {formatearMoneda(recTotal(f))}
                       </div>
                       <div style={{ fontSize: 10, color: overdue ? '#c0392b' : '#6b6a66', marginTop: 1 }}>
                         {overdue ? '⚠ ' : ''}{fechaCorta(f.vencimiento)}

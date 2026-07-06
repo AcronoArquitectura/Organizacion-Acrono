@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Cliente, Factura, Presupuesto, Proyecto } from '@/lib/types';
 import { getCurrentPhase, getPhaseProgress } from '@/lib/utils/phases';
+import { formatearMoneda } from '@/lib/utils/formato';
 import { honorariosConAjuste, nuevoPresupuestoObj } from '@/lib/utils/coag';
 import { esFacturaReal } from '@/lib/utils/facturas';
 import { upsertPresupuesto, deletePresupuesto } from '@/lib/actions/presupuestos';
@@ -24,8 +25,6 @@ interface Props {
   isPending: boolean;
 }
 
-const fmt = (n: number) =>
-  (n || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 
 const BADGE: Record<string, { color: string; bg: string; border: string; label: string }> = {
   activo:     { color: '#2e7d46', bg: '#e8f3ec', border: '#bfe0cb', label: 'Activo' },
@@ -75,11 +74,11 @@ export default function ClientesFicha({
   const badge = BADGE[cliente.estado] ?? BADGE.potencial;
 
   const kpis = [
-    { label: 'Presupuestado', value: fmt(presup), color: '#333' },
-    { label: 'Facturado',     value: fmt(fact),   color: '#333' },
-    { label: 'Cobrado',       value: fmt(cobr),   color: cobr > 0 ? '#2e7d46' : '#333' },
-    { label: 'Pendiente',     value: fmt(pend),   color: pend > 0 ? '#b07a1e' : '#333' },
-    { label: 'Resultado est.', value: fmt(result), color: result >= 0 ? '#2e7d46' : '#c0392b' },
+    { label: 'Presupuestado', value: formatearMoneda(presup), color: '#333' },
+    { label: 'Facturado',     value: formatearMoneda(fact),   color: '#333' },
+    { label: 'Cobrado',       value: formatearMoneda(cobr),   color: cobr > 0 ? '#2e7d46' : '#333' },
+    { label: 'Pendiente',     value: formatearMoneda(pend),   color: pend > 0 ? '#b07a1e' : '#333' },
+    { label: 'Resultado est.', value: formatearMoneda(result), color: result >= 0 ? '#2e7d46' : '#c0392b' },
   ];
 
   const contact = [
@@ -324,7 +323,7 @@ export default function ClientesFicha({
                       </span>
                     </td>
                     <td style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
-                      {fmt(facturaTotal(f))}
+                      {formatearMoneda(facturaTotal(f))}
                     </td>
                   </tr>
                 );
@@ -375,7 +374,7 @@ export default function ClientesFicha({
                       </span>
                     </td>
                     <td style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                      {anulado ? '—' : fmt(honorariosConAjuste(p))}
+                      {anulado ? '—' : formatearMoneda(honorariosConAjuste(p))}
                     </td>
                     <td style={{ padding: '8px 10px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                       <button onClick={e => { e.stopPropagation(); handleDuplicar(p); }} disabled={presupPending}

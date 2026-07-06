@@ -6,8 +6,7 @@ export const recIVA   = (r: Factura | Gasto) => r.lines.reduce((s, l) => s + (+l
 export const recIRPF  = (r: Factura | Gasto) => r.lines.reduce((s, l) => s + (+l.base  || 0) * (+l.irpf || 0), 0);
 export const recTotal = (r: Factura | Gasto) => recBase(r) + recIVA(r) - recIRPF(r);
 
-export const fmt = (n: number) =>
-  (n || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+export { formatearMoneda as fmt } from '@/lib/utils/formato';
 
 export function trimOf(fecha: string): 'T1' | 'T2' | 'T3' | 'T4' {
   const m = new Date(fecha + 'T00:00:00').getMonth();
