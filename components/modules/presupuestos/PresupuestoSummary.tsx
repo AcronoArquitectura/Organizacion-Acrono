@@ -1,6 +1,7 @@
 'use client';
 
 import type { Presupuesto } from '@/lib/types';
+import type { ConvertResult } from './PresupuestosView';
 import { honorariosDesdePartidas, honorariosExtrasTotal, pemTotal } from '@/lib/utils/coag';
 
 const fmt = (n: number) =>
@@ -13,6 +14,8 @@ interface Props {
   onPDF: () => void;
   onDelete: () => void;
   onUpd: (patch: Partial<Presupuesto>) => void;
+  onConvertirCliente?: () => void;
+  convertResult?: ConvertResult | null;
   isPending: boolean;
 }
 
@@ -21,7 +24,7 @@ const kv: React.CSSProperties = { display: 'flex', justifyContent: 'space-betwee
 const k: React.CSSProperties = { color: '#a09e99', fontSize: 11 };
 const v: React.CSSProperties = { fontVariantNumeric: 'tabular-nums' };
 
-export default function PresupuestoSummary({ p, isNew, onSave, onPDF, onDelete, onUpd, isPending }: Props) {
+export default function PresupuestoSummary({ p, isNew, onSave, onPDF, onDelete, onUpd, onConvertirCliente, convertResult, isPending }: Props) {
   const fijoPartidas   = p.partidas.filter(r => r.tipo === 'fijo' && Math.abs(+(r.importe ?? 0)) > 0.005);
   const mensualPartidas = p.partidas.filter(r => r.tipo === 'mensual');
   const extrasTotal    = honorariosExtrasTotal(p);
@@ -114,8 +117,20 @@ export default function PresupuestoSummary({ p, isNew, onSave, onPDF, onDelete, 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button onClick={onSave} disabled={isPending} style={btn()}>Guardar</button>
           <button onClick={onPDF} style={btn()}>Vista previa PDF</button>
-          <button onClick={() => alert('Módulo Clientes — próximamente se conectará.')} style={btn(true)}>Convertir en cliente</button>
+          <button onClick={onConvertirCliente} disabled={isPending || !onConvertirCliente} style={btn(true)}>
+            Convertir en cliente
+          </button>
         </div>
+        {convertResult && (
+          <div style={{
+            marginTop: 8, padding: '7px 10px', borderRadius: 5, fontSize: 12,
+            background: convertResult.ok ? '#e8f3ec' : '#fdf3f2',
+            color: convertResult.ok ? '#2e7d46' : '#c0392b',
+            border: `1px solid ${convertResult.ok ? '#b5d9c3' : '#e3b4ae'}`,
+          }}>
+            {convertResult.msg}
+          </div>
+        )}
         {!isNew && (
           <button onClick={onDelete} disabled={isPending} style={{ ...btn(false, true), height: 26, padding: '0 9px', fontSize: 11, marginTop: 8 }}>
             Eliminar presupuesto

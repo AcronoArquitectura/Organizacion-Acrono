@@ -22,6 +22,7 @@ export default function ClientesView({ initialClientes, orgProyectos, initialFac
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
+  const [modalNifError, setModalNifError] = useState('');
   const [isPending, startTransition] = useTransition();
 
   const selected = clientes.find((c) => c.id === selectedId) ?? null;
@@ -39,14 +40,20 @@ export default function ClientesView({ initialClientes, orgProyectos, initialFac
   function closeModal() {
     setModalOpen(false);
     setEditingCliente(null);
+    setModalNifError('');
   }
 
   function handleSave(cliente: Cliente) {
+    setModalNifError('');
     startTransition(async () => {
-      const updated = await upsertCliente(cliente);
-      setClientes(updated);
-      setSelectedId(cliente.id);
-      closeModal();
+      try {
+        const updated = await upsertCliente(cliente);
+        setClientes(updated);
+        setSelectedId(cliente.id);
+        closeModal();
+      } catch (e) {
+        setModalNifError(e instanceof Error ? e.message : 'Error al guardar');
+      }
     });
   }
 
@@ -99,6 +106,7 @@ export default function ClientesView({ initialClientes, orgProyectos, initialFac
           onSave={handleSave}
           onClose={closeModal}
           isPending={isPending}
+          serverNifError={modalNifError}
         />
       )}
     </div>

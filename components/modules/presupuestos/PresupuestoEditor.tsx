@@ -11,6 +11,7 @@ import {
 import PresupuestoSummary from './PresupuestoSummary';
 import { openPresupuestoPDF } from './presupuestoPDF';
 import { useRouter } from 'next/navigation';
+import type { ConvertResult } from './PresupuestosView';
 
 // ── fmt 2 decimales (igual que presupuestos.html) ─────────────────────────────
 const fmt = (n: number) =>
@@ -36,11 +37,13 @@ interface Props {
   onSave: (p: Presupuesto) => void;
   onDelete: (id: string) => void;
   onCancel: () => void;
+  onConvertirCliente?: (p: Presupuesto, onResult: (r: ConvertResult) => void) => void;
   isPending: boolean;
 }
 
-export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave, onDelete, onCancel, isPending }: Props) {
+export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave, onDelete, onCancel, onConvertirCliente, isPending }: Props) {
   const [p, setP] = useState<Presupuesto>(presupuesto);
+  const [convertResult, setConvertResult] = useState<ConvertResult | null>(null);
   const router = useRouter();
   const [showSugg, setShowSugg] = useState(false);
   const suppressing = useRef(false);
@@ -732,6 +735,13 @@ export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave
             onPDF={() => openPresupuestoPDF(p)}
             onDelete={() => onDelete(p.id)}
             onUpd={upd}
+            onConvertirCliente={onConvertirCliente
+              ? () => onConvertirCliente(p, (r) => {
+                  setConvertResult(r);
+                  if (r.ok && r.clienteId) upd({ clienteRefId: r.clienteId });
+                })
+              : undefined}
+            convertResult={convertResult}
             isPending={isPending}
           />
         </div>

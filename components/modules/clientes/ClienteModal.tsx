@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Cliente, ProyectoCliente, Proyecto } from '@/lib/types';
 
 interface Props {
@@ -10,6 +10,7 @@ interface Props {
   onSave: (c: Cliente) => void;
   onClose: () => void;
   isPending: boolean;
+  serverNifError?: string;
 }
 
 const EMPTY: Omit<Cliente, 'id'> = {
@@ -27,11 +28,15 @@ const LBL: React.CSSProperties = {
 };
 const FG: React.CSSProperties = { marginBottom: 14 };
 
-export default function ClienteModal({ cliente, existingClientes, orgProyectos, onSave, onClose, isPending }: Props) {
+export default function ClienteModal({ cliente, existingClientes, orgProyectos, onSave, onClose, isPending, serverNifError }: Props) {
   const [form, setForm] = useState<Omit<Cliente, 'id'>>(
     cliente ? { ...cliente } : { ...EMPTY },
   );
   const [nifError, setNifError] = useState('');
+
+  useEffect(() => {
+    if (serverNifError) setNifError(serverNifError);
+  }, [serverNifError]);
 
   function set<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
     setForm((prev) => ({ ...prev, [k]: v }));
@@ -39,9 +44,9 @@ export default function ClienteModal({ cliente, existingClientes, orgProyectos, 
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const nif = form.nif.trim();
+    const nif = form.nif.trim().toUpperCase();
     if (nif) {
-      const dup = existingClientes.find(c => c.nif.trim() === nif && c.id !== cliente?.id);
+      const dup = existingClientes.find(c => c.nif.trim().toUpperCase() === nif && c.id !== cliente?.id);
       if (dup) { setNifError(`Ya existe un cliente con este NIF: ${dup.nombre}`); return; }
     }
     setNifError('');

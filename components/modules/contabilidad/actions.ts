@@ -4,6 +4,7 @@ import { getFacturas, saveFacturas } from '@/lib/data/facturas';
 import { getGastos, saveGastos } from '@/lib/data/gastos';
 import { getProveedores, saveProveedores } from '@/lib/data/proveedores';
 import { readAllData, writeAllData } from '@/lib/data/storage';
+import { normalizarNIF } from '@/lib/utils/nif';
 import type { Factura, FacturaLine, Gasto, Proveedor, Cliente, ProyectoCliente } from '@/lib/types';
 import { guessCategoria } from './calculos';
 
@@ -197,12 +198,15 @@ export async function importarDatos(payload: ImportPayload): Promise<ImportResul
   const existingFacturaIds   = new Set(allData.contabilidad.facturas.map(x => x.id));
   const existingGastoIds     = new Set(allData.contabilidad.gastos.map(x => x.id));
   const existingProveedorNifs = new Set(allData.contabilidad.proveedores.map(x => x.nif).filter(Boolean));
-  const existingClienteNifs  = new Set(allData.clientes.map(x => x.nif).filter(Boolean));
+  const existingClienteNifs  = new Set(allData.clientes.map(x => normalizarNIF(x.nif)).filter(Boolean));
 
   const newFacturas    = normalizedFacturas.filter(f => f.id && !existingFacturaIds.has(f.id));
   const newGastos      = payload.gastos.filter(g => !existingGastoIds.has(g.id));
   const newProveedores = payload.proveedores.filter(p => !p.nif || !existingProveedorNifs.has(p.nif));
-  const newClientes    = payload.clientes.filter(c => !c.nif || !existingClienteNifs.has(c.nif));
+  const newClientes    = payload.clientes.filter(c => {
+    const nif = normalizarNIF(c.nif);
+    return !nif || !existingClienteNifs.has(nif);
+  });
 
   const mergedData = {
     ...allData,
