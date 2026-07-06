@@ -26,6 +26,7 @@ export default function GastosTab({ gastos, proveedores, onUpdateGastos, onUpdat
   const curYear = new Date().getFullYear();
 
   const [year, setYear]     = useState(years.includes(curYear) ? curYear : (years[0] ?? curYear));
+  const [month, setMonth]   = useState(0); // 0 = todos los meses
   const [trim, setTrim]     = useState('');
   const [estado, setEstado] = useState('');
   const [cat, setCat]       = useState('');
@@ -33,8 +34,15 @@ export default function GastosTab({ gastos, proveedores, onUpdateGastos, onUpdat
   const [editing, setEditing] = useState<Gasto | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
+  // Único array filtrado — fuente de verdad para lista y KPIs
   const inYear = gastos.filter(g => yearOf(g.fecha) === year);
   const filtered = inYear.filter(g => {
+    if (month > 0) {
+      // Fecha inválida/vacía → solo aparece en "Todos los meses"
+      if (!g.fecha) return false;
+      const d = new Date(g.fecha + 'T00:00:00');
+      if (isNaN(d.getTime()) || d.getMonth() + 1 !== month) return false;
+    }
     if (trim   && trimOf(g.fecha) !== trim)  return false;
     if (estado && g.estado !== estado)       return false;
     if (cat === '__none__') { if (g.categoria) return false; }
@@ -46,10 +54,15 @@ export default function GastosTab({ gastos, proveedores, onUpdateGastos, onUpdat
     return true;
   }).sort((a, b) => a.fecha.localeCompare(b.fecha));
 
-  const base = inYear.reduce((s, g) => s + recBase(g), 0);
-  const iva  = inYear.reduce((s, g) => s + recIVA(g), 0);
-  const irpf = inYear.reduce((s, g) => s + recIRPF(g), 0);
-  const pend = inYear.filter(g => g.estado === 'pendiente').reduce((s, g) => s + recTotal(g), 0);
+  // KPIs siempre derivados del array filtrado — imposible que diverjan de la lista
+  const base = filtered.reduce((s, g) => s + recBase(g), 0);
+  const iva  = filtered.reduce((s, g) => s + recIVA(g), 0);
+  const irpf = filtered.reduce((s, g) => s + recIRPF(g), 0);
+  const pend = filtered.filter(g => g.estado === 'pendiente').reduce((s, g) => s + recTotal(g), 0);
+
+  const kpiLabel = month > 0
+    ? `${new Date(year, month - 1).toLocaleString('es-ES', { month: 'long' })} ${year}`
+    : String(year);
 
   function handleSave(g: Gasto, nif: string) {
     startTransition(async () => {
@@ -75,8 +88,16 @@ export default function GastosTab({ gastos, proveedores, onUpdateGastos, onUpdat
     <>
       {/* Filter bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        <select style={filterInp} value={year} onChange={e => setYear(+e.target.value)}>
+        <select style={filterInp} value={year} onChange={e => { setYear(+e.target.value); setMonth(0); }}>
           {years.map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
+        <select style={filterInp} value={month} onChange={e => setMonth(+e.target.value)}>
+          <option value={0}>Todos los meses</option>
+          {Array.from({ length: 12 }, (_, i) => (
+            <option key={i + 1} value={i + 1}>
+              {new Date(year, i).toLocaleString('es-ES', { month: 'long' })}
+            </option>
+          ))}
         </select>
         <select style={filterInp} value={trim} onChange={e => setTrim(e.target.value)}>
           <option value="">Todos los trimestres</option>
@@ -104,7 +125,7 @@ export default function GastosTab({ gastos, proveedores, onUpdateGastos, onUpdat
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 16 }}>
         {[
-          { lbl: `Gasto ${year}`, val: fmt(base), col: '#333' },
+          { lbl: `Gasto ${kpiLabel}`, val: fmt(base), col: '#333' },
           { lbl: 'IVA soportado', val: fmt(iva), col: '#333' },
           { lbl: 'IRPF', val: fmt(irpf), col: '#333' },
           { lbl: 'Pendiente de pago', val: fmt(pend), col: '#b07a1e' },

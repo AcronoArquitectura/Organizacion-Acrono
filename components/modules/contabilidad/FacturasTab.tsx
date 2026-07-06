@@ -31,6 +31,7 @@ export default function FacturasTab({ facturas, onUpdate, clientes, presupuestos
   const curYear = new Date().getFullYear();
 
   const [year, setYear]     = useState(years.includes(curYear) ? curYear : (years[0] ?? curYear));
+  const [month, setMonth]   = useState(0); // 0 = todos los meses
   const [estado, setEstado] = useState('');
   const [trim, setTrim]     = useState('');
   const [tag, setTag]       = useState('');
@@ -50,27 +51,36 @@ export default function FacturasTab({ facturas, onUpdate, clientes, presupuestos
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const inYear     = facturas.filter(f => yearOf(f.fecha) === year);
-  const inYearReal = inYear.filter(esFacturaReal);
+  // Único array filtrado — fuente de verdad para lista y KPIs
+  const inYear = facturas.filter(f => yearOf(f.fecha) === year);
   const filtered = inYear.filter(f => {
+    if (month > 0) {
+      const d = new Date(f.fecha + 'T00:00:00');
+      if (isNaN(d.getTime()) || d.getMonth() + 1 !== month) return false;
+    }
+    if (trim   && trimOf(f.fecha) !== trim) return false;
     if (estado && f.estado !== estado) return false;
-    if (trim  && trimOf(f.fecha) !== trim) return false;
-    if (tag   && !(f.tags ?? []).includes(tag)) return false;
+    if (tag    && !(f.tags ?? []).includes(tag)) return false;
     if (search) {
       const q = search.toLowerCase();
       if (!(f.numero + ' ' + f.cliente + ' ' + f.concepto).toLowerCase().includes(q)) return false;
     }
     return true;
   }).sort((a, b) => a.fecha.localeCompare(b.fecha));
+
+  // Proformas excluidas de KPIs y totales
   const filteredReal = filtered.filter(esFacturaReal);
 
-  // KPIs respetan el filtro de trimestre si está activo; proformas excluidas
-  const kpiBase  = trim ? inYearReal.filter(f => trimOf(f.fecha) === trim) : inYearReal;
-  const emitido  = kpiBase.reduce((s, f) => s + recBase(f), 0);
-  const ivaTotal = kpiBase.reduce((s, f) => s + recIVA(f), 0);
-  const cobrado  = kpiBase.filter(f => f.estado === 'cobrada').reduce((s, f) => s + recTotal(f), 0);
-  const pendiente = kpiBase.filter(f => f.estado === 'pendiente').reduce((s, f) => s + recTotal(f), 0);
-  const irpf     = kpiBase.reduce((s, f) => s + recIRPF(f), 0);
+  // KPIs siempre derivados de filteredReal — imposible que diverjan de la lista
+  const emitido   = filteredReal.reduce((s, f) => s + recBase(f), 0);
+  const ivaTotal  = filteredReal.reduce((s, f) => s + recIVA(f), 0);
+  const cobrado   = filteredReal.filter(f => f.estado === 'cobrada').reduce((s, f) => s + recTotal(f), 0);
+  const pendiente = filteredReal.filter(f => f.estado === 'pendiente').reduce((s, f) => s + recTotal(f), 0);
+  const irpf      = filteredReal.reduce((s, f) => s + recIRPF(f), 0);
+
+  const kpiLabel = month > 0
+    ? `${new Date(year, month - 1).toLocaleString('es-ES', { month: 'long' })} ${year}`
+    : trim ? `${trim} ${year}` : String(year);
 
   function openNew() {
     setEditing(null);
@@ -147,8 +157,16 @@ export default function FacturasTab({ facturas, onUpdate, clientes, presupuestos
     <>
       {/* Filter bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        <select style={filterInp} value={year} onChange={e => setYear(+e.target.value)}>
+        <select style={filterInp} value={year} onChange={e => { setYear(+e.target.value); setMonth(0); }}>
           {years.map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
+        <select style={filterInp} value={month} onChange={e => setMonth(+e.target.value)}>
+          <option value={0}>Todos los meses</option>
+          {Array.from({ length: 12 }, (_, i) => (
+            <option key={i + 1} value={i + 1}>
+              {new Date(year, i).toLocaleString('es-ES', { month: 'long' })}
+            </option>
+          ))}
         </select>
         <select style={filterInp} value={estado} onChange={e => setEstado(e.target.value)}>
           <option value="">Todos los estados</option>
@@ -178,7 +196,7 @@ export default function FacturasTab({ facturas, onUpdate, clientes, presupuestos
 
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 10, marginBottom: 16 }}>
-        <div style={kpiStyle()}><div style={kpiLbl}>Base imp. {trim || year}</div><div style={kpiVal()}>{fmt(emitido)}</div></div>
+        <div style={kpiStyle()}><div style={kpiLbl}>Base imp. {kpiLabel}</div><div style={kpiVal()}>{fmt(emitido)}</div></div>
         <div style={kpiStyle()}><div style={kpiLbl}>Total IVA</div><div style={kpiVal()}>{fmt(ivaTotal)}</div></div>
         <div style={kpiStyle()}><div style={kpiLbl}>Emitido c/IVA</div><div style={kpiVal()}>{fmt(emitido + ivaTotal)}</div></div>
         <div style={kpiStyle()}><div style={kpiLbl}>Cobrado</div><div style={kpiVal('#2e7d46')}>{fmt(cobrado)}</div></div>
