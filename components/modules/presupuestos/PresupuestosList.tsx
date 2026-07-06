@@ -1,5 +1,5 @@
-import { formatearMoneda } from '@/lib/utils/formato';
 'use client';
+import { formatearMoneda } from '@/lib/utils/formato';
 
 import { useState } from 'react';
 import type { Presupuesto } from '@/lib/types';
