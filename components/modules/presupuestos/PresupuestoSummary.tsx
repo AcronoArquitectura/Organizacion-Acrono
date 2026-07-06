@@ -2,10 +2,8 @@
 
 import type { Presupuesto } from '@/lib/types';
 import type { ConvertResult } from './PresupuestosView';
+import { formatearMoneda } from '@/lib/utils/formato';
 import { honorariosDesdePartidas, honorariosExtrasTotal, pemTotal } from '@/lib/utils/coag';
-
-const fmt = (n: number) =>
-  (Math.round((+n || 0) * 100) / 100).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 
 interface Props {
   p: Presupuesto;
@@ -57,21 +55,21 @@ export default function PresupuestoSummary({ p, isNew, onSave, onPDF, onDelete, 
         {fijoPartidas.map((r, i) => (
           <div key={i} style={kv}>
             <span style={k}>{r.concepto || `Partida ${i + 1}`}</span>
-            <span style={v}>{fmt(+(r.importe ?? 0))}</span>
+            <span style={v}>{formatearMoneda(+(r.importe ?? 0))}</span>
           </div>
         ))}
 
         {mensualPartidas.map((r, i) => +(r.importe ?? 0) > 0 && (
           <div key={`m${i}`} style={kv}>
             <span style={k}>{r.concepto || 'Dirección de obra'}</span>
-            <span style={v}>{fmt(+(r.importe ?? 0))}/mes × {r.meses ?? 0} = {fmt(+(r.importe ?? 0) * +(r.meses ?? 0))}</span>
+            <span style={v}>{formatearMoneda(+(r.importe ?? 0))}/mes × {r.meses ?? 0} = {formatearMoneda(+(r.importe ?? 0) * +(r.meses ?? 0))}</span>
           </div>
         ))}
 
         {extrasTotal > 0 && (
           <div style={kv}>
             <span style={k}>Honorarios extra</span>
-            <span style={v}>{fmt(extrasTotal)}</span>
+            <span style={v}>{formatearMoneda(extrasTotal)}</span>
           </div>
         )}
 
@@ -81,18 +79,18 @@ export default function PresupuestoSummary({ p, isNew, onSave, onPDF, onDelete, 
 
         <div style={{ ...kv, borderTop: '1px solid #e0ddd5', borderBottom: 'none', marginTop: 4, paddingTop: 8, fontWeight: 600 }}>
           <span style={k}>Total honorarios (s/IVA)</span>
-          <span style={v}>{fmt(base)}</span>
+          <span style={v}>{formatearMoneda(base)}</span>
         </div>
         <div style={{ ...kv, borderBottom: 'none' }}>
           <span style={k}>IVA 21%</span>
-          <span style={v}>{fmt(base * 0.21)}</span>
+          <span style={v}>{formatearMoneda(base * 0.21)}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 14, fontWeight: 700 }}>
           <span style={k}>TOTAL con IVA</span>
-          <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 16 }}>{fmt(base * 1.21)}</span>
+          <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 16 }}>{formatearMoneda(base * 1.21)}</span>
         </div>
         <div style={{ fontSize: 10, color: '#a09e99', marginTop: 4 }}>
-          PEM {fmt(pem)} · ratio honorarios/PEM {pem ? (base / pem * 100).toFixed(2) : '0'}%
+          PEM {formatearMoneda(pem)} · ratio honorarios/PEM {pem ? (base / pem * 100).toFixed(2) : '0'}%
         </div>
       </div>
 

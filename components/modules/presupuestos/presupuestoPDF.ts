@@ -4,6 +4,7 @@
  * Usa window.open() + window.print() — misma técnica que el original.
  */
 import type { Presupuesto } from '@/lib/types';
+import { formatearMoneda } from '@/lib/utils/formato';
 import {
   honorariosLineas, honorariosBase, honorariosConAjuste, honorariosExtrasTotal,
   calcPartidasDef, pemTotal, rowEurM2, mcBase, capCoef, costesTotales,
@@ -45,10 +46,6 @@ Tratamos la información facilitada con el fin de prestar el servicio solicitado
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-// fmt: 2 decimales (igual que presupuestos.html)
-const fmt = (n: number) => (Math.round((+n || 0) * 100) / 100).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-// fmt0: 0 decimales para totales grandes
-const fmt0 = (n: number) => Math.round(n).toLocaleString('es-ES') + ' €';
 const esc = (s: string) => (s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const mdBold = (s: string) => esc(s).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
 
@@ -73,20 +70,20 @@ function pemCalcHTML(p: Presupuesto): string {
     const ft = (FT_VIV.find(x => x.k === p.ftKey) ?? { v: 1 }).v;
     const fc = (FC_VIV.find(x => x.k === p.fcKey) ?? { v: 1 }).v;
     coef = `<div class="coef">
-      <div>Módulo base · Mo = ${fmt0(p.mo)}/m²</div>
-      <div>Mc Vivienda = Mo·Fl·Ft·Fc = <b>${fmt0(p.mo * fl * ft * fc)}/m²</b></div>
+      <div>Módulo base · Mo = ${formatearMoneda(p.mo)}/m²</div>
+      <div>Mc Vivienda = Mo·Fl·Ft·Fc = <b>${formatearMoneda(p.mo * fl * ft * fc)}/m²</b></div>
       <div>Localización · Fl = ${fl}</div><div>Tipología · Ft = ${ft}</div><div>Calidad · Fc = ${fc}</div>
       ${capCoef(p) !== 1 ? `<div>Coef. capítulos = ×${capCoef(p).toFixed(3)}</div>` : ''}</div>`;
   } else {
-    coef = `<div class="coef"><div>Mc base = <b>${fmt0(mcBase(p))}/m²</b></div>${capCoef(p) !== 1 ? `<div>Coef. capítulos = ×${capCoef(p).toFixed(3)}</div>` : ''}</div>`;
+    coef = `<div class="coef"><div>Mc base = <b>${formatearMoneda(mcBase(p))}/m²</b></div>${capCoef(p) !== 1 ? `<div>Coef. capítulos = ×${capCoef(p).toFixed(3)}</div>` : ''}</div>`;
   }
   const rows = p.pemRows.map(r =>
-    `<tr><td class="c">${r.m2}</td><td>${esc(r.concepto)}</td><td class="r">${fmt(rowEurM2(p, r))}</td><td class="r">${fmt0((r.m2 || 0) * rowEurM2(p, r))}</td></tr>`
+    `<tr><td class="c">${r.m2}</td><td>${esc(r.concepto)}</td><td class="r">${formatearMoneda(rowEurM2(p, r))}</td><td class="r">${formatearMoneda((r.m2 || 0) * rowEurM2(p, r))}</td></tr>`
   ).join('');
   return `<table class="t">
     <tr class="th"><td class="c">Superficie [m²]</td><td>Concepto</td><td class="r">Precio [€/m²]</td><td class="r">Precio [€]</td></tr>
     ${rows}
-    <tr class="fase-h"><td colspan="3">TOTAL PEM</td><td class="r">${fmt0(pemTotal(p))}</td></tr>
+    <tr class="fase-h"><td colspan="3">TOTAL PEM</td><td class="r">${formatearMoneda(pemTotal(p))}</td></tr>
   </table>${coef}`;
 }
 
@@ -190,16 +187,16 @@ function buildHTML(p: Presupuesto, base: string): string {
           `<td style="padding:5px 10px;width:56px;vertical-align:middle;text-align:center;border-right:1px solid #ddd9d2">` +
             `<div style="border:2px solid #444;width:34px;height:24px;margin:0 auto"></div>` +
           `</td>` +
-          `<td style="padding:7px 8px;width:90px;vertical-align:middle;text-align:right;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap">${fmt0(+(x.importe ?? 0))}</td>` +
+          `<td style="padding:7px 8px;width:90px;vertical-align:middle;text-align:right;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap">${formatearMoneda(+(x.importe ?? 0))}</td>` +
         `</tr></table>` +
       `</td></tr>`;
     }
     let val: string;
     if      (x.tipo === 'incluido')   val = 'Incluido';
     else if (x.tipo === 'noincluido') val = 'NO INCLUIDO';
-    else if (x.tipo === 'mensual')    val = fmt0(x.importe ?? 0) + '/mes';
-    else if (x.tipo === 'porhoras')   val = Math.round(+(x.importe ?? 0)).toLocaleString('es-ES') + ' €/h';
-    else                               val = fmt0(x.importe ?? 0);
+    else if (x.tipo === 'mensual')    val = formatearMoneda(x.importe ?? 0) + '/mes';
+    else if (x.tipo === 'porhoras')   val = formatearMoneda(+(x.importe ?? 0)) + '/h';
+    else                               val = formatearMoneda(x.importe ?? 0);
     return `<tr><td>${esc(x.concepto)}</td><td class="r">${val}</td></tr>`;
   };
 
@@ -240,14 +237,14 @@ function buildHTML(p: Presupuesto, base: string): string {
     <div class="lb">Teléfono:</div><div>${esc(cl.tel)}</div><div class="lb">Servicio:</div><div>${esc(pr.servicio)}</div>
   </div>
   <div class="pj-sub">${esc(pr.titulo || '')}</div>
-  <div class="pem-note">[PEM: ${fmt0(ct.pem)}]</div>
+  <div class="pem-note">[PEM: ${formatearMoneda(ct.pem)}]</div>
   <table class="t">
     ${allFases.map(f => `<tr class="fase-h"><td colspan="2">${esc(f)}</td></tr>${partidas.filter(x => x.fase === f).map(partRow).join('') || '<tr><td colspan="2" style="color:#999">—</td></tr>'}`).join('')}
   </table>
   <div class="tot-box">
-    <div class="tr"><span>BASE IMPONIBLE</span><span>${fmt0(baseFijo)}${mensual ? ' + ' + fmt0(mensual.importe ?? 0) + '/mes' : ''}</span></div>
-    <div class="tr"><span>IVA 21%</span><span>${fmt0(baseFijo * 0.21)}${mensual ? ' + ' + fmt0((mensual.importe ?? 0) * 0.21) + '/mes' : ''}</span></div>
-    <div class="tr f"><span>TOTAL</span><span>${fmt0(baseFijo * 1.21)}${mensual ? ' + ' + fmt0((mensual.importe ?? 0) * 1.21) + '/mes' : ''}</span></div>
+    <div class="tr"><span>BASE IMPONIBLE</span><span>${formatearMoneda(baseFijo)}${mensual ? ' + ' + formatearMoneda(mensual.importe ?? 0) + '/mes' : ''}</span></div>
+    <div class="tr"><span>IVA 21%</span><span>${formatearMoneda(baseFijo * 0.21)}${mensual ? ' + ' + formatearMoneda((mensual.importe ?? 0) * 0.21) + '/mes' : ''}</span></div>
+    <div class="tr f"><span>TOTAL</span><span>${formatearMoneda(baseFijo * 1.21)}${mensual ? ' + ' + formatearMoneda((mensual.importe ?? 0) * 1.21) + '/mes' : ''}</span></div>
   </div>
   <div class="validez">Validez de la oferta: ${p.validezDias} días. Se revisarán los honorarios de cada fase si se pausa por causa ajena a Ácrono Arquitectura más de 6 meses, según IPC.</div>
   ${pr.refCatastral || pr.lugarMunicipio ? `<h2 class="sec">Datos lugar de actuación</h2><table class="catastro"><tr><th>Término municipal</th><th>Dirección</th><th>Ref. catastral</th></tr><tr><td>${esc(pr.lugarMunicipio)}</td><td>${esc(pr.lugarDir)}</td><td>${esc(pr.refCatastral)}</td></tr></table>` : ''}
@@ -283,8 +280,8 @@ ${obs.length ? `<div class="page">
   ${pemCalcHTML(p)}
   <table class="t">
     <tr class="th"><td>Concepto</td><td class="r">Precio</td></tr>
-    ${ctFilas.filter(f => (f[1] as number) !== 0).map(f => `<tr><td>${esc(f[0] as string)} ${f[2] ? '<span class="est">Estimación</span>' : ''}</td><td class="r">${fmt0(f[1] as number)}</td></tr>`).join('')}
-    <tr class="fase-h"><td>TOTAL</td><td class="r">${fmt0(ctTotal)}</td></tr>
+    ${ctFilas.filter(f => (f[1] as number) !== 0).map(f => `<tr><td>${esc(f[0] as string)} ${f[2] ? '<span class="est">Estimación</span>' : ''}</td><td class="r">${formatearMoneda(f[1] as number)}</td></tr>`).join('')}
+    <tr class="fase-h"><td>TOTAL</td><td class="r">${formatearMoneda(ctTotal)}</td></tr>
   </table>
   ${pieHTML()}
 </div>

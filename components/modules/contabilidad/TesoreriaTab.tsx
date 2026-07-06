@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import type { Factura, Gasto } from '@/lib/types';
 import { recBase, recTotal, fmt } from './calculos';
+import { formatearMoneda } from '@/lib/utils/formato';
 import { esFacturaReal } from '@/lib/utils/facturas';
 import { saveSaldoBase } from './actions';
 
@@ -15,9 +16,6 @@ interface Props {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-const fmtEur = (n: number) =>
-  new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
 
 const fmtFecha = (iso: string) => {
   if (!iso) return '';
@@ -199,13 +197,13 @@ export default function TesoreriaTab({ facturas, gastos, initialSaldoBase }: Pro
                   fontVariantNumeric: 'tabular-nums',
                   color: saldoActual >= 0 ? '#2e7d46' : '#c0392b',
                 }}>
-                  {fmtEur(saldoActual)}
+                  {formatearMoneda(saldoActual)}
                 </div>
                 {colchon !== null && (
                   <div style={{ marginTop: 12, padding: '8px 10px', borderRadius: 5, background: colchon >= 0 ? '#f0faf3' : '#fdf0ef', border: `1px solid ${colchon >= 0 ? '#b2dfc0' : '#f0b8b4'}` }}>
                     <div style={{ fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: '#a09e99', marginBottom: 2 }}>Colchón vs previsión 3m</div>
                     <div style={{ fontSize: 18, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: colchon >= 0 ? '#2e7d46' : '#c0392b' }}>
-                      {fmtEur(colchon)}
+                      {formatearMoneda(colchon)}
                     </div>
                   </div>
                 )}
@@ -215,20 +213,20 @@ export default function TesoreriaTab({ facturas, gastos, initialSaldoBase }: Pro
               <div style={{ flex: 1, minWidth: 260 }}>
                 <div style={kv}>
                   <span style={lbl}>Saldo base ({fmtFecha(saldoBase!.fecha)})</span>
-                  <span style={num}>{fmtEur(saldoBase!.importe)}</span>
+                  <span style={num}>{formatearMoneda(saldoBase!.importe)}</span>
                 </div>
                 <div style={kv}>
                   <span style={{ ...lbl, color: '#2e7d46' }}>+ Cobrado desde esa fecha</span>
-                  <span style={{ ...num, color: '#2e7d46' }}>+{fmtEur(cobradoDesde)}</span>
+                  <span style={{ ...num, color: '#2e7d46' }}>+{formatearMoneda(cobradoDesde)}</span>
                 </div>
                 <div style={kv}>
                   <span style={{ ...lbl, color: '#c0392b' }}>− Gastos desde esa fecha</span>
-                  <span style={{ ...num, color: '#c0392b' }}>−{fmtEur(gastadoDesde)}</span>
+                  <span style={{ ...num, color: '#c0392b' }}>−{formatearMoneda(gastadoDesde)}</span>
                 </div>
                 <div style={{ ...kv, borderBottom: 'none', marginTop: 6, paddingTop: 8, borderTop: '1px solid #e0ddd5' }}>
                   <span style={{ ...lbl, fontStyle: 'italic' }}>Pendiente de cobro (informativo, no incluido)</span>
                   <span style={{ ...num, color: pendienteCobro > 0 ? '#b07a1e' : '#a09e99' }}>
-                    {fmtEur(pendienteCobro)}
+                    {formatearMoneda(pendienteCobro)}
                   </span>
                 </div>
               </div>
@@ -249,20 +247,20 @@ export default function TesoreriaTab({ facturas, gastos, initialSaldoBase }: Pro
                   <span style={lbl}>
                     Media mensual ({mesesValidos.length} mes{mesesValidos.length !== 1 ? 'es' : ''} incluido{mesesValidos.length !== 1 ? 's' : ''})
                   </span>
-                  <span style={num}>{fmtEur(mediaGasto)}/mes</span>
+                  <span style={num}>{formatearMoneda(mediaGasto)}/mes</span>
                 </div>
                 <div style={{ ...kv, borderBottom: 'none', fontWeight: 600, fontSize: 14, paddingTop: 8 }}>
                   <span>Previsión a 3 meses</span>
-                  <span style={{ fontVariantNumeric: 'tabular-nums', color: '#b07a1e' }}>{fmtEur(prevision3m)}</span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums', color: '#b07a1e' }}>{formatearMoneda(prevision3m)}</span>
                 </div>
 
                 <div style={{ marginTop: 12, fontSize: 11, color: '#6b6a66', lineHeight: 1.7 }}>
-                  <span style={{ color: '#a09e99' }}>Meses incluidos ({">"}{fmtEur(MIN_GASTO)}): </span>
+                  <span style={{ color: '#a09e99' }}>Meses incluidos ({">"}{formatearMoneda(MIN_GASTO)}): </span>
                   {mesesValidos.map(monthLabel).join(' · ')}
                 </div>
                 {mesesExcluidos.length > 0 && (
                   <div style={{ fontSize: 11, color: '#a09e99', lineHeight: 1.7 }}>
-                    <span>Excluidos ({"≤"}{fmtEur(MIN_GASTO)}): </span>
+                    <span>Excluidos ({"≤"}{formatearMoneda(MIN_GASTO)}): </span>
                     {mesesExcluidos.map(monthLabel).join(' · ')}
                   </div>
                 )}

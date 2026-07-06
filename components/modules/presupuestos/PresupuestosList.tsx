@@ -1,12 +1,10 @@
+import { formatearMoneda } from '@/lib/utils/formato';
 'use client';
 
 import { useState } from 'react';
 import type { Presupuesto } from '@/lib/types';
 import { honorariosBase } from '@/lib/utils/coag';
 import { openPresupuestoPDF } from './presupuestoPDF';
-
-const fmt = (n: number) =>
-  new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
 
 const ESTADO_BADGE: Record<string, { color: string; bg: string; border: string }> = {
   borrador:  { color: '#6b6a66', bg: '#f5f4f0', border: '#c8c4bc' },
@@ -141,7 +139,7 @@ export default function PresupuestosList({ presupuestos, onNew, onEdit, onDelete
                     <td style={{ padding: '9px 12px', fontSize: 12 }}>{p.fecha}</td>
                     <td style={{ padding: '9px 12px', fontSize: 12 }}>{p.cliente.nombre || '—'}</td>
                     <td style={{ padding: '9px 12px', fontSize: 12, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.proyecto.titulo || '—'}</td>
-                    <td style={{ padding: '9px 12px', fontSize: 12, textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{fmt(hon)}</td>
+                    <td style={{ padding: '9px 12px', fontSize: 12, textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{formatearMoneda(hon)}</td>
                     <td style={{ padding: '9px 12px' }}>
                       <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 9px', borderRadius: 20, color: badge.color, background: badge.bg, border: `1px solid ${badge.border}` }}>
                         {p.estado.charAt(0).toUpperCase() + p.estado.slice(1)}

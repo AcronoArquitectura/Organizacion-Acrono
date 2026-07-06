@@ -1,10 +1,10 @@
 // Generación PDF de factura — portado de contabilidad.html (función facturaPrintHTML)
 // Misma técnica: window.open() + window.print()
 import type { Factura } from '@/lib/types';
+import { formatearMoneda } from '@/lib/utils/formato';
 import { EMISOR, BANCO } from './constants';
 
 const esc = (s: string) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const fmt = (n: number) => (n || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 const pctStr = (v: number) => v ? Math.round(v * 100) + '%' : '';
 
 function fechaCorta(iso: string): string {
@@ -26,7 +26,7 @@ function buildHTML(f: Factura, logoUrl: string, proforma = false): string {
     <td class="c">${pctStr(+l.iva)}</td>
     <td class="c">${pctStr(+l.irpf)}</td>
     <td class="c"></td>
-    <td class="r">${fmt(+l.base)}</td>
+    <td class="r">${formatearMoneda(+l.base)}</td>
   </tr>`).join('');
 
   return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title></title>
@@ -130,10 +130,10 @@ thead th:nth-child(5){width:108px;}
       <div>Código BIC/SWIFT: ${BANCO.bic}</div>
     </div>
     <div class="totales">
-      <div class="tr"><span>Base Imponible total:</span><span>${fmt(baseTot)}</span></div>
-      <div class="tr"><span>Total IVA:</span><span>${fmt(ivaTot)}</span></div>
-      <div class="tr"><span>Retención total:</span><span>${retTot ? '−' + fmt(retTot) : fmt(0)}</span></div>
-      <div class="tot"><div class="tr" style="padding:0;color:#333;font-size:15px;"><span>TOTAL:</span><span>${fmt(total)}</span></div></div>
+      <div class="tr"><span>Base Imponible total:</span><span>${formatearMoneda(baseTot)}</span></div>
+      <div class="tr"><span>Total IVA:</span><span>${formatearMoneda(ivaTot)}</span></div>
+      <div class="tr"><span>Retención total:</span><span>${retTot ? '−' + formatearMoneda(retTot) : formatearMoneda(0)}</span></div>
+      <div class="tot"><div class="tr" style="padding:0;color:#333;font-size:15px;"><span>TOTAL:</span><span>${formatearMoneda(total)}</span></div></div>
     </div>
   </div>
 </div></body></html>`;

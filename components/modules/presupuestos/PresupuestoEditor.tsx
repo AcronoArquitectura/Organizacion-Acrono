@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import type { Presupuesto, Cliente, PemRow, Partida } from '@/lib/types';
+import { formatearMoneda } from '@/lib/utils/formato';
 import {
   FL_OPTS, FT_VIV, FC_VIV, USOS_OTROS, USOS_URB, OBSERVACIONES_SEED,
   capsFor, plantillaDef, mcBase, rowEurM2, pemTotal, m2Totales,
@@ -12,10 +13,6 @@ import PresupuestoSummary from './PresupuestoSummary';
 import { openPresupuestoPDF } from './presupuestoPDF';
 import { useRouter } from 'next/navigation';
 import type { ConvertResult } from './PresupuestosView';
-
-// ── fmt 2 decimales (igual que presupuestos.html) ─────────────────────────────
-const fmt = (n: number) =>
-  (Math.round((+n || 0) * 100) / 100).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 
 // ── Estilos compartidos ───────────────────────────────────────────────────────
 const P = {
@@ -358,7 +355,7 @@ export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave
             </>)}
 
             <div style={P.hint}>
-              Mc base = <b>{fmt(mc)}/m²</b>. Cada fila usa Mc×coef (vivienda=1; garaje/piscina/porche≈0,5) o un €/m² manual.
+              Mc base = <b>{formatearMoneda(mc)}/m²</b>. Cada fila usa Mc×coef (vivienda=1; garaje/piscina/porche≈0,5) o un €/m² manual.
             </div>
 
             {/* Tabla PEM */}
@@ -396,7 +393,7 @@ export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave
                         style={{ accentColor: '#b07a1e', width: 'auto', height: 'auto' }} />
                     </td>
                     <td style={{ padding: '4px 8px', textAlign: 'right', fontSize: 12, fontVariantNumeric: 'tabular-nums', width: 100 }}>
-                      {fmt((r.m2 || 0) * rowEurM2(p, r))}
+                      {formatearMoneda((r.m2 || 0) * rowEurM2(p, r))}
                     </td>
                     <td style={{ padding: '4px 4px', width: 26 }}>
                       {p.pemRows.length > 1 && (
@@ -415,7 +412,7 @@ export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave
             </button>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '8px 0', fontSize: 12.5, borderTop: '1px solid #e0ddd5', marginTop: 8, fontWeight: 600 }}>
               <span style={{ fontSize: 11, color: '#a09e99' }}>PEM total</span>
-              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(pemTotal(p))}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatearMoneda(pemTotal(p))}</span>
             </div>
           </div>
 
@@ -487,7 +484,7 @@ export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave
                         <span>{key}</span>
                         {tarea.escala && <span style={{ fontSize: 11, color: '#6b6a66' }}>×escala</span>}
                       </span>
-                      <span style={{ fontSize: 11, color: '#6b6a66', whiteSpace: 'nowrap' }}>{h} h · {fmt(imp)}</span>
+                      <span style={{ fontSize: 11, color: '#6b6a66', whiteSpace: 'nowrap' }}>{h} h · {formatearMoneda(imp)}</span>
                     </summary>
                     <div style={{ padding: '8px 10px', borderTop: '1px solid #e0ddd5' }}>
                       {tarea.sub.map((s, si) => (
@@ -519,7 +516,7 @@ export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave
               ))}
             </div>
             <div style={P.hint}>
-              Dirección de obra = <b>{fmt(doEurMes(p))}/mes</b> × {p.duracionMeses} meses · DRS = {m2T} m² ×{' '}
+              Dirección de obra = <b>{formatearMoneda(doEurMes(p))}/mes</b> × {p.duracionMeses} meses · DRS = {m2T} m² ×{' '}
               <input type="number" step="0.1" value={p.drsEurM2}
                 style={{ width: 54, height: 24, padding: '0 4px', border: '1px solid #c8c4bc', borderRadius: 4, fontSize: 11, fontFamily: 'inherit', textAlign: 'right' as const, outline: 'none' }}
                 onChange={e => upd({ drsEurM2: +e.target.value })} />{' '}
@@ -546,7 +543,7 @@ export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave
                         onChange={ev => { const extras = [...p.extras]; extras[i] = { ...e, horas: +ev.target.value || 0 }; upd({ extras }); }} />
                     </td>
                     <td style={{ width: 80, textAlign: 'right', fontSize: 12, padding: '5px 8px', fontVariantNumeric: 'tabular-nums', color: '#6b6a66' }}>
-                      {e.aplica ? fmt((+e.horas || 0) * p.eurHora) : '—'}
+                      {e.aplica ? formatearMoneda((+e.horas || 0) * p.eurHora) : '—'}
                     </td>
                   </tr>
                 ))}
@@ -661,9 +658,9 @@ export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave
               const mensual = p.partidas.find(r => r.tipo === 'mensual');
               return (
                 <div style={{ marginTop: 8, padding: '6px 8px', background: '#f5f4f0', borderRadius: 4, fontSize: 11.5, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                  <span>Base fija: <b>{fmt(baseFijo)}</b></span>
-                  {mensual && <span>DO: <b>{fmt(mensual.importe ?? 0)}/mes × {mensual.meses ?? 0} m</b></span>}
-                  <span>Total c/IVA: <b>{fmt(baseFijo * 1.21)}{mensual ? ' + ' + fmt((mensual.importe ?? 0) * 1.21) + '/mes' : ''}</b></span>
+                  <span>Base fija: <b>{formatearMoneda(baseFijo)}</b></span>
+                  {mensual && <span>DO: <b>{formatearMoneda(mensual.importe ?? 0)}/mes × {mensual.meses ?? 0} m</b></span>}
+                  <span>Total c/IVA: <b>{formatearMoneda(baseFijo * 1.21)}{mensual ? ' + ' + formatearMoneda((mensual.importe ?? 0) * 1.21) + '/mes' : ''}</b></span>
                 </div>
               );
             })()}
@@ -703,18 +700,18 @@ export default function PresupuestoEditor({ presupuesto, clientes, isNew, onSave
                   {ct.filas.map(([lbl, val]) => (
                     <div key={lbl} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #f4f2ed', fontSize: 12 }}>
                       <span style={{ color: '#6b6a66', fontSize: 11 }}>{lbl as string}</span>
-                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(val as number)}</span>
+                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatearMoneda(val as number)}</span>
                     </div>
                   ))}
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 14, fontWeight: 700 }}>
                     <span style={{ fontSize: 11, color: '#a09e99' }}>TOTAL estimado</span>
-                    <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 16 }}>{fmt(ct.total)}</span>
+                    <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 16 }}>{formatearMoneda(ct.total)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#6b6a66', padding: '2px 0' }}>
-                    <span>Coste total obra</span><span>{fmt(ct.costeObra)}</span>
+                    <span>Coste total obra</span><span>{formatearMoneda(ct.costeObra)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#6b6a66', padding: '2px 0' }}>
-                    <span>m² totales · coste/m²</span><span>{ct.m2} m² · {fmt(ct.costeM2)}</span>
+                    <span>m² totales · coste/m²</span><span>{ct.m2} m² · {formatearMoneda(ct.costeM2)}</span>
                   </div>
                 </>);
               })()}

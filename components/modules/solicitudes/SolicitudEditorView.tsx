@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { Solicitud, EstanciaSolicitud } from '@/lib/types';
 import { updateSolicitud, generarPresupuesto } from '@/lib/actions/solicitudes';
 import { FL_OPTS, FT_VIV, FC_VIV, USOS_OTROS, MO_DEF, MU_DEF, fcSugerido } from '@/lib/utils/coag';
+import { formatearMoneda } from '@/lib/utils/formato';
 
 // ── Estilos compartidos ───────────────────────────────────────────────────────
 
@@ -201,7 +202,7 @@ export default function SolicitudEditorView({ solicitud }: Props) {
                 <div style={P.lbl}>Presupuesto indicado</div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: '#333' }}>
                   {sol.presupuesto_cliente > 0
-                    ? sol.presupuesto_cliente.toLocaleString('es-ES') + ' €'
+                    ? formatearMoneda(sol.presupuesto_cliente)
                     : '—'}
                 </div>
               </div>
@@ -468,7 +469,7 @@ export default function SolicitudEditorView({ solicitud }: Props) {
               {sol.presupuesto_cliente > 0 && (
                 <div style={{ borderTop: '1px solid #e0ddd5', marginTop: 6, paddingTop: 6, display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: '#a09e99', fontSize: 11 }}>Presupuesto cliente</span>
-                  <b style={{ color: '#b07a1e' }}>{sol.presupuesto_cliente.toLocaleString('es-ES')} €</b>
+                  <b style={{ color: '#b07a1e' }}>{formatearMoneda(sol.presupuesto_cliente)}</b>
                 </div>
               )}
             </div>

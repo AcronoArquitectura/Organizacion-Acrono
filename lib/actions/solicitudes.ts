@@ -1,4 +1,5 @@
 'use server';
+import { formatearMoneda } from '@/lib/utils/formato';
 
 import type { Solicitud, Presupuesto, PemRow, EstanciaSolicitud } from '@/lib/types';
 import { readSolicitudesUI, writeSolicitudesUI } from '@/lib/data/solicitudes-storage';
@@ -173,7 +174,7 @@ export async function generarPresupuesto(
     // Nota interna con contexto del cliente
     notaInterna: [
       sol.presupuesto_cliente > 0
-        ? `Presupuesto cliente: ${sol.presupuesto_cliente.toLocaleString('es-ES')} €`
+        ? `Presupuesto cliente: ${formatearMoneda(sol.presupuesto_cliente)}`
         : '',
       (sol.plazo_inicio_proyecto || sol.plazo)
         ? `Inicio proyecto: ${sol.plazo_inicio_proyecto || sol.plazo}`
