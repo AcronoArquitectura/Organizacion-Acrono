@@ -118,6 +118,7 @@ export default function DashboardView({ facturas, gastos, org, presupuestos, sal
 
   // ── Proyectos activos ──
   const activeProjects = org.projects.filter(p => {
+    if (p.archivadoEn) return false;
     const ph = getCurrentPhase(p);
     return ph !== 'En Espera' && ph !== 'Finalizado';
   });
