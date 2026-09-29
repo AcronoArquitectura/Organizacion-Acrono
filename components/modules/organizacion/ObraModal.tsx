@@ -9,6 +9,8 @@ interface Props {
   authors: Author[];
   onSave: (o: Obra) => void;
   onDelete: (id: string) => void;
+  onArchivar: (id: string) => void;
+  onReactivar: (id: string) => void;
   onClose: () => void;
   isPending: boolean;
 }
@@ -32,8 +34,9 @@ const sectionLabel: React.CSSProperties = {
   fontWeight: 600, margin: '16px 0 6px',
 };
 
-export default function ObraModal({ obra, authors, onSave, onDelete, onClose, isPending }: Props) {
+export default function ObraModal({ obra, authors, onSave, onDelete, onArchivar, onReactivar, onClose, isPending }: Props) {
   const isNew = !obra;
+  const archivada = !!obra?.archivadoEn;
   const defaultStart = dateToInput(getMondayOfWeek(new Date()));
 
   const [code, setCode] = useState(obra?.code ?? '');
@@ -77,6 +80,7 @@ export default function ObraModal({ obra, authors, onSave, onDelete, onClose, is
       startDate: new Date(startDate + 'T00:00:00').toISOString(),
       authorId: authorId ?? '',
       phases,
+      archivadoEn: obra?.archivadoEn, // conservar estado de archivo al editar
     };
     onSave(o);
   };
@@ -88,6 +92,12 @@ export default function ObraModal({ obra, authors, onSave, onDelete, onClose, is
           <h2 style={{ fontSize: 15, fontWeight: 600 }}>{isNew ? 'Nueva obra' : 'Editar obra'}</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, color: '#a09e99', lineHeight: 1, padding: 0 }}>×</button>
         </div>
+
+        {archivada && (
+          <div style={{ marginBottom: 14, padding: '7px 10px', borderRadius: 5, fontSize: 11, background: '#f5f4f0', border: '1px solid #e0ddd5', color: '#6b6a66' }}>
+            Obra archivada el {new Date(obra!.archivadoEn!).toLocaleDateString('es-ES')}. No aparece en el Gantt.
+          </div>
+        )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div><label style={labelStyle}>Código</label><input style={inputStyle} value={code} onChange={e => setCode(e.target.value)} placeholder="OB.001" /></div>
@@ -149,10 +159,22 @@ export default function ObraModal({ obra, authors, onSave, onDelete, onClose, is
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 18, paddingTop: 14, borderTop: '1px solid #e0ddd5' }}>
           {!isNew && (
-            <button onClick={() => { if (confirm('¿Eliminar obra?')) onDelete(obra!.id); }}
-              style={{ ...btnDanger, marginRight: 'auto' }} disabled={isPending}>
-              Eliminar
-            </button>
+            <>
+              <button onClick={() => { if (confirm('¿Eliminar obra?')) onDelete(obra!.id); }}
+                style={btnDanger} disabled={isPending}>
+                Eliminar
+              </button>
+              {archivada ? (
+                <button onClick={() => onReactivar(obra!.id)} style={{ ...btnStyle, marginRight: 'auto' }} disabled={isPending}>
+                  Reactivar
+                </button>
+              ) : (
+                <button onClick={() => { if (confirm('¿Archivar obra? Desaparecerá del Gantt; podrás reactivarla desde "Archivados".')) onArchivar(obra!.id); }}
+                  style={{ ...btnStyle, marginRight: 'auto' }} disabled={isPending}>
+                  Archivar
+                </button>
+              )}
+            </>
           )}
           <button onClick={onClose} style={btnStyle}>Cancelar</button>
           <button onClick={handleSave} style={btnDark} disabled={isPending}>Guardar</button>

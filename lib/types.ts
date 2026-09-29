@@ -47,6 +47,7 @@ export interface Obra {
   startDate: string; // ISO 8601
   authorId: string;
   phases: ObraPhase[];
+  archivadoEn?: string | null; // ISO 8601; ausente o null = no archivada
 }
 
 // ── Clientes ──────────────────────────────────────────────────────────────────

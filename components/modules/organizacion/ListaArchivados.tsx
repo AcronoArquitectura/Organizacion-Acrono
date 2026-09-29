@@ -1,11 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import type { Proyecto, Author } from '@/lib/types';
+import type { Proyecto, Obra, Author } from '@/lib/types';
 import { addWeeks, fmtDate } from '@/lib/utils/gantt';
 
+// Listado de archivados, usado por separado para proyectos y para obras (nunca mezclados)
+type Item = Proyecto | Obra;
+
 interface Props {
-  projects: Proyecto[]; // solo archivados
+  titulo: string;                     // 'Proyectos' | 'Obras'
+  items: Item[];                      // solo archivados de un único tipo
+  vacio: string;
   authors: Author[];
   onEdit: (id: string) => void;
   onReactivar: (id: string) => void;
@@ -18,10 +23,10 @@ const th: React.CSSProperties = {
 };
 const td: React.CSSProperties = { padding: '8px 12px', fontSize: 12 };
 
-export default function ProyectosArchivados({ projects, authors, onEdit, onReactivar, isPending }: Props) {
+export default function ListaArchivados({ titulo, items: projects, vacio, authors, onEdit, onReactivar, isPending }: Props) {
   const [search, setSearch] = useState('');
 
-  const authorNames = (p: Proyecto) => {
+  const authorNames = (p: Item) => {
     const ids = new Set<string>();
     if (p.authorId) ids.add(p.authorId);
     (p.phases ?? []).forEach(ph => (ph.authorIds ?? []).forEach(id => ids.add(id)));
@@ -34,9 +39,10 @@ export default function ProyectosArchivados({ projects, authors, onEdit, onReact
     .sort((a, b) => (b.archivadoEn ?? '').localeCompare(a.archivadoEn ?? ''));
 
   return (
-    <div style={{ padding: '18px 20px', maxWidth: 1100 }}>
+    <div style={{ padding: '18px 20px 6px', maxWidth: 1100 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-        <span style={{ fontSize: 12, color: '#6b6a66' }}>{projects.length} proyecto{projects.length === 1 ? '' : 's'} archivado{projects.length === 1 ? '' : 's'}</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: '#333' }}>{titulo}</span>
+        <span style={{ fontSize: 12, color: '#a09e99' }}>{projects.length}</span>
         <div style={{ flex: 1 }} />
         <input placeholder="Buscar código, nombre, autor…" value={search} onChange={e => setSearch(e.target.value)}
           style={{ height: 28, padding: '0 8px', border: '1px solid #c8c4bc', borderRadius: 4, fontSize: 11, fontFamily: 'inherit', outline: 'none', width: 240, background: '#fff' }} />
@@ -44,7 +50,7 @@ export default function ProyectosArchivados({ projects, authors, onEdit, onReact
       <div style={{ background: '#fff', border: '1px solid #e0ddd5', borderRadius: 6, overflow: 'hidden' }}>
         {rows.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 40, color: '#a09e99', fontSize: 12 }}>
-            {projects.length === 0 ? 'No hay proyectos archivados.' : 'Sin resultados.'}
+            {projects.length === 0 ? vacio : 'Sin resultados.'}
           </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
