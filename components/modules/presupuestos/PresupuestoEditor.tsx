@@ -6,7 +6,7 @@ import { formatearMoneda } from '@/lib/utils/formato';
 import {
   FL_OPTS, FT_VIV, FC_VIV, USOS_OTROS, USOS_URB, OBSERVACIONES_SEED,
   capsFor, plantillaDef, mcBase, rowEurM2, pemTotal, m2Totales,
-  escala, kReformaAuto, doEurMes, honorariosLineas, honorariosBase, costesTotales,
+  escala, kReformaAuto, doEurMes, costesTotales,
   calcPartidasDef,
 } from '@/lib/utils/coag';
 import PresupuestoSummary from './PresupuestoSummary';

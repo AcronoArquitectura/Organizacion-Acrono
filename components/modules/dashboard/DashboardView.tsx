@@ -4,7 +4,7 @@ import type { OrgData } from '@/lib/data/organizacion';
 import { recBase, recTotal, yearOf, fechaCorta } from '@/components/modules/contabilidad/calculos';
 import { esFacturaReal } from '@/lib/utils/facturas';
 import { getCurrentPhase, getPhaseProgress } from '@/lib/utils/phases';
-import { honorariosConAjuste } from '@/lib/utils/coag';
+import { honorariosDesdePartidas } from '@/lib/utils/coag';
 
 interface Props {
   facturas: Factura[];
@@ -144,7 +144,7 @@ export default function DashboardView({ facturas, gastos, org, presupuestos, sal
     { label: 'Urbanización',  color: '#b8c8d8', items: aceptados.filter(p => p.familia === 'urbanizacion') },
   ].map(g => ({
     ...g,
-    total: g.items.reduce((s, p) => s + honorariosConAjuste(p), 0),
+    total: g.items.reduce((s, p) => s + honorariosDesdePartidas(p), 0),
     count: g.items.length,
   }));
   const maxServiceTotal = Math.max(...serviceGroups.map(g => g.total), 1);

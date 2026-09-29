@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { Cliente, Factura, Presupuesto, Proyecto } from '@/lib/types';
 import { getCurrentPhase, getPhaseProgress } from '@/lib/utils/phases';
 import { formatearMoneda } from '@/lib/utils/formato';
-import { honorariosConAjuste, nuevoPresupuestoObj } from '@/lib/utils/coag';
+import { honorariosDesdePartidas, nuevoPresupuestoObj } from '@/lib/utils/coag';
 import { esFacturaReal } from '@/lib/utils/facturas';
 import { upsertPresupuesto, deletePresupuesto } from '@/lib/actions/presupuestos';
 import { upsertFactura, deleteFactura } from '@/components/modules/contabilidad/actions';
@@ -57,7 +57,7 @@ export default function ClientesFicha({
     ? presupuestos.filter(p => p.cliente.dni === cliente.nif)
     : [];
   const clientePresupuestos = todosPresupuestos.filter(p => p.estado === 'aceptado');
-  const presup = clientePresupuestos.reduce((s, p) => s + honorariosConAjuste(p), 0);
+  const presup = clientePresupuestos.reduce((s, p) => s + honorariosDesdePartidas(p), 0);
 
   // ── Factura calculations ────────────────────────────────────────────────────
   const clienteFacturas = cliente.nif
@@ -374,7 +374,7 @@ export default function ClientesFicha({
                       </span>
                     </td>
                     <td style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                      {anulado ? '—' : formatearMoneda(honorariosConAjuste(p))}
+                      {anulado ? '—' : formatearMoneda(honorariosDesdePartidas(p))}
                     </td>
                     <td style={{ padding: '8px 10px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                       <button onClick={e => { e.stopPropagation(); handleDuplicar(p); }} disabled={presupPending}

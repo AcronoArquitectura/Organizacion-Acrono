@@ -3,7 +3,7 @@ import { formatearMoneda } from '@/lib/utils/formato';
 
 import { useState } from 'react';
 import type { Presupuesto } from '@/lib/types';
-import { honorariosBase } from '@/lib/utils/coag';
+import { honorariosDesdePartidas } from '@/lib/utils/coag';
 import { openPresupuestoPDF } from './presupuestoPDF';
 
 const ESTADO_BADGE: Record<string, { color: string; bg: string; border: string }> = {
@@ -49,7 +49,7 @@ export default function PresupuestosList({ presupuestos, onNew, onEdit, onDelete
     let cmp = 0;
     if      (sortKey === 'fecha')       cmp = a.fecha.localeCompare(b.fecha);
     else if (sortKey === 'cliente')     cmp = (a.cliente.nombre || '').localeCompare(b.cliente.nombre || '');
-    else if (sortKey === 'honorarios')  cmp = honorariosBase(a) - honorariosBase(b);
+    else if (sortKey === 'honorarios')  cmp = honorariosDesdePartidas(a) - honorariosDesdePartidas(b);
     else if (sortKey === 'estado')      cmp = a.estado.localeCompare(b.estado);
     return sortDir === 'asc' ? cmp : -cmp;
   });
@@ -128,7 +128,8 @@ export default function PresupuestosList({ presupuestos, onNew, onEdit, onDelete
             <tbody>
               {sorted.map(p => {
                 const badge = ESTADO_BADGE[p.estado] ?? ESTADO_BADGE.borrador;
-                const hon = honorariosBase(p);
+                // Mismo "Total honorarios (s/IVA)" que el resumen de la ficha (PresupuestoSummary)
+                const hon = honorariosDesdePartidas(p);
                 return (
                   <tr key={p.id} onClick={() => onEdit(p)}
                     style={{ borderBottom: '1px solid #f0eee9', cursor: 'pointer' }}
