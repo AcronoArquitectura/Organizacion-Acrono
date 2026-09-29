@@ -10,6 +10,7 @@ import GanttOrg from './GanttOrg';
 import ProyectoModal from './ProyectoModal';
 import ObraModal from './ObraModal';
 import AuthorModal from './AuthorModal';
+import ProyectosArchivados from './ProyectosArchivados';
 import {
   upsertProyecto, deleteProyecto, reorderProyectos,
   upsertObra, deleteObra, reorderObras,
@@ -20,7 +21,7 @@ import {
   exportGeneralObrasPDF,
 } from './orgPDF';
 
-type Tab = 'org' | 'proyectos' | 'obras';
+type Tab = 'org' | 'proyectos' | 'obras' | 'archivados';
 
 interface Props {
   initialOrg: OrgData;
@@ -53,10 +54,14 @@ export default function OrganizacionView({ initialOrg, clientes, initialProyecto
 
   const [isPending, startTransition] = useTransition();
 
+  // Un único array de proyectos; las vistas de trabajo (Gantts y PDF) solo ven los no archivados
+  const activeProjects = projects.filter(p => !p.archivadoEn);
+  const archivedProjects = projects.filter(p => p.archivadoEn);
+
   useEffect(() => {
     if (initialProyectoId) {
       const p = initialOrg.projects.find(x => x.id === initialProyectoId);
-      if (p) { setTab('proyectos'); setEditProyectoId(p.id); }
+      if (p) { setTab(p.archivadoEn ? 'archivados' : 'proyectos'); setEditProyectoId(p.id); }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -86,10 +91,27 @@ export default function OrganizacionView({ initialOrg, clientes, initialProyecto
     startTransition(async () => { applyOrg(await deleteProyecto(id)); setEditProyectoId(null); });
   }, [applyOrg]);
 
-  const handleReorderProyectos = useCallback((ids: string[]) => {
+  const handleArchivarProyecto = useCallback((id: string) => {
+    const p = projects.find(x => x.id === id);
+    if (!p) return;
+    startTransition(async () => { applyOrg(await upsertProyecto({ ...p, archivadoEn: new Date().toISOString() })); setEditProyectoId(null); });
+  }, [applyOrg, projects]);
+
+  const handleReactivarProyecto = useCallback((id: string) => {
+    const p = projects.find(x => x.id === id);
+    if (!p) return;
+    startTransition(async () => { applyOrg(await upsertProyecto({ ...p, archivadoEn: null })); setEditProyectoId(null); });
+  }, [applyOrg, projects]);
+
+  const handleReorderProyectos = useCallback((activeIds: string[]) => {
+    // El Gantt solo reordena los activos: los archivados conservan su posición en el array
+    // (si no se incluyeran, reorderProyectos los eliminaría del JSON)
+    const queue = [...activeIds];
+    const ids = projects.map(p => p.archivadoEn ? p.id : queue.shift()).filter((id): id is string => !!id);
+    ids.push(...queue);
     setProjects(prev => { const m = new Map(prev.map(p => [p.id, p])); return ids.map(id => m.get(id)!).filter(Boolean); });
     startTransition(async () => { applyOrg(await reorderProyectos(ids)); });
-  }, [applyOrg]);
+  }, [applyOrg, projects]);
 
   const handleSaveObra = useCallback((o: Obra) => {
     startTransition(async () => { applyOrg(await upsertObra(o)); setEditObraId(null); });
@@ -109,9 +131,9 @@ export default function OrganizacionView({ initialOrg, clientes, initialProyecto
   }, [applyOrg]);
 
   const handleExportPDF = useCallback(async () => {
-    if (tab === 'proyectos') await exportGeneralProyectosPDF(projects, authors, weeks);
+    if (tab === 'proyectos') await exportGeneralProyectosPDF(activeProjects, authors, weeks);
     else if (tab === 'obras') await exportGeneralObrasPDF(obras, authors, weeks);
-  }, [tab, projects, obras, authors, weeks]);
+  }, [tab, activeProjects, obras, authors, weeks]);
 
   const fmtOpt: Intl.DateTimeFormatOptions = { month: 'short', year: 'numeric' };
   const windowLabel = `${weeks[0].toLocaleDateString('es-ES', fmtOpt)} → ${weeks[weeks.length - 1].toLocaleDateString('es-ES', fmtOpt)}`;
@@ -120,6 +142,7 @@ export default function OrganizacionView({ initialOrg, clientes, initialProyecto
     { id: 'org',       label: 'Organización' },
     { id: 'proyectos', label: 'Organización Proyectos' },
     { id: 'obras',     label: 'Organización Obras' },
+    { id: 'archivados', label: `Archivados${archivedProjects.length ? ` (${archivedProjects.length})` : ''}` },
   ];
 
   return (
@@ -139,8 +162,8 @@ export default function OrganizacionView({ initialOrg, clientes, initialProyecto
         ))}
       </div>
 
-      {/* Controls bar */}
-      <div style={{
+      {/* Controls bar (solo vistas Gantt) */}
+      {tab !== 'archivados' && <div style={{
         display: 'flex', alignItems: 'center', gap: 10, padding: '6px 20px',
         background: '#fff', borderBottom: '1px solid #e0ddd5', fontSize: 11, flexWrap: 'wrap',
       }}>
@@ -170,13 +193,13 @@ export default function OrganizacionView({ initialOrg, clientes, initialProyecto
         {tab === 'obras' && (
           <button onClick={() => setEditObraId('new')} style={btnDark}>+ Obra</button>
         )}
-      </div>
+      </div>}
 
       {/* Gantt scroll area */}
       <div style={{ flex: 1, overflow: 'auto', background: '#f5f4f0', minHeight: 0 }}>
         {tab === 'proyectos' && (
           <GanttProyectos
-            projects={projects} authors={authors}
+            projects={activeProjects} authors={authors}
             weeks={weeks} cellW={cellW} todayIdx={todayIdx}
             filterAuthorId={filterAuthorId}
             onEdit={id => setEditProyectoId(id)}
@@ -196,12 +219,20 @@ export default function OrganizacionView({ initialOrg, clientes, initialProyecto
         )}
         {tab === 'org' && (
           <GanttOrg
-            projects={projects} obras={obras} authors={authors}
+            projects={activeProjects} obras={obras} authors={authors}
             weeks={weeks} cellW={cellW} todayIdx={todayIdx}
             filterAuthorId={filterAuthorId}
             onEditProject={id => setEditProyectoId(id)}
             onEditObra={id => setEditObraId(id)}
             setTooltip={setTooltip}
+          />
+        )}
+        {tab === 'archivados' && (
+          <ProyectosArchivados
+            projects={archivedProjects} authors={authors}
+            onEdit={id => setEditProyectoId(id)}
+            onReactivar={handleReactivarProyecto}
+            isPending={isPending}
           />
         )}
       </div>
@@ -226,6 +257,8 @@ export default function OrganizacionView({ initialOrg, clientes, initialProyecto
           clientes={clientes}
           onSave={handleSaveProyecto}
           onDelete={handleDeleteProyecto}
+          onArchivar={handleArchivarProyecto}
+          onReactivar={handleReactivarProyecto}
           onClose={() => setEditProyectoId(null)}
           isPending={isPending}
         />

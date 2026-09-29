@@ -31,6 +31,7 @@ export interface Proyecto {
   clienteNif?: string;
   phases: Phase[];
   meetings: Meeting[];
+  archivadoEn?: string | null; // ISO 8601; ausente o null = no archivado
 }
 
 export interface ObraPhase {

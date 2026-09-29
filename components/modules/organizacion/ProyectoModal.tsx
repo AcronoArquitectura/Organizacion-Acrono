@@ -28,6 +28,8 @@ interface Props {
   clientes: Cliente[];
   onSave: (p: Proyecto) => void;
   onDelete: (id: string) => void;
+  onArchivar: (id: string) => void;
+  onReactivar: (id: string) => void;
   onClose: () => void;
   isPending: boolean;
 }
@@ -73,8 +75,9 @@ const sectionLabel: React.CSSProperties = {
   fontWeight: 600, margin: '16px 0 6px',
 };
 
-export default function ProyectoModal({ proyecto, authors, clientes, onSave, onDelete, onClose, isPending }: Props) {
+export default function ProyectoModal({ proyecto, authors, clientes, onSave, onDelete, onArchivar, onReactivar, onClose, isPending }: Props) {
   const isNew = !proyecto;
+  const archivado = !!proyecto?.archivadoEn;
   const defaultStart = dateToInput(getMondayOfWeek(new Date()));
 
   const [code, setCode] = useState(proyecto?.code ?? '');
@@ -164,6 +167,7 @@ export default function ProyectoModal({ proyecto, authors, clientes, onSave, onD
       clienteNif: clienteNif || undefined,
       phases: outPhases,
       meetings: outMeetings,
+      archivadoEn: proyecto?.archivadoEn, // conservar estado de archivo al editar
     };
     onSave(proj);
   };
@@ -175,6 +179,12 @@ export default function ProyectoModal({ proyecto, authors, clientes, onSave, onD
           <h2 style={{ fontSize: 15, fontWeight: 600 }}>{isNew ? 'Nuevo proyecto' : 'Editar proyecto'}</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, color: '#a09e99', lineHeight: 1, padding: 0 }}>×</button>
         </div>
+
+        {archivado && (
+          <div style={{ marginBottom: 14, padding: '7px 10px', borderRadius: 5, fontSize: 11, background: '#f5f4f0', border: '1px solid #e0ddd5', color: '#6b6a66' }}>
+            Proyecto archivado el {new Date(proyecto!.archivadoEn!).toLocaleDateString('es-ES')}. No aparece en el Gantt.
+          </div>
+        )}
 
         {/* Datos básicos */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -303,6 +313,16 @@ export default function ProyectoModal({ proyecto, authors, clientes, onSave, onD
                 style={btnDanger} disabled={isPending}>
                 Eliminar
               </button>
+              {archivado ? (
+                <button onClick={() => onReactivar(proyecto!.id)} style={btnStyle} disabled={isPending}>
+                  Reactivar
+                </button>
+              ) : (
+                <button onClick={() => { if (confirm('¿Archivar proyecto? Desaparecerá del Gantt; podrás reactivarlo desde "Archivados".')) onArchivar(proyecto!.id); }}
+                  style={btnStyle} disabled={isPending}>
+                  Archivar
+                </button>
+              )}
               <button onClick={async () => { await exportSingleProyectoPDF(proyecto!, authors); }}
                 style={{ ...btnStyle, marginRight: 'auto' }} disabled={isPending}>
                 ↓ PDF
